@@ -1,6 +1,7 @@
 # 学習アシスタント Hotori
 
-Electron + React + Vite + TypeScript + Ollama による学習支援デスクトップアプリ
+- Electron + React + Vite + TypeScript + Ollama による学習支援デスクトップアプリ
+- SDDで開発 --> [仕様書](https://github.com/kolinz/hotori-local/blob/main/docs/hotori-specification-SDD-v0.1.8e.md)
 
 ## 必要環境
 
