@@ -1,6 +1,6 @@
 {
   "name": "learning-assistant",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "AI-powered learning assistant with Ollama",
   "main": "dist-electron/main.js",
   "scripts": {
