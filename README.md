@@ -12,6 +12,7 @@ Electron + React + Vite + TypeScript + Ollama による学習支援デスクト�
 
 ```bash
 npm install
+npm audit fix --force
 npm run dev
 ```
 
