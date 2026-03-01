@@ -1,0 +1,167 @@
+/* ── ルート ── */
+.root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-deep);
+}
+
+/* ── ツールバー ── */
+.toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--bg-panel);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+  -webkit-app-region: drag;
+}
+
+.appTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+}
+
+.toolbarActions {
+  display: flex;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+}
+
+.toolbarBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.toolbarBtn:hover { background: var(--accent-soft); }
+
+.toolbarBtnActive {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+}
+
+/* ── メインエリア（ツールバー下） ── */
+.main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ── 左: チャット ── */
+.chatPane {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── 右: アバター ── */
+.avatarPane {
+  flex-shrink: 0;
+  width: 220px;   /* 縦横比1:3の画像 → 高さ約660px想定で幅220px */
+  position: relative;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+}
+
+/* 小さい画面ではアバターを非表示 */
+@media (max-width: 700px) {
+  .avatarPane { display: none; }
+}
+
+/* ── タブバー ── */
+.tabBar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 4px 8px 0;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tabBar::-webkit-scrollbar { display: none; }
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 12px;
+  border-radius: 6px 6px 0 0;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  cursor: pointer;
+  max-width: 180px;
+  min-width: 100px;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.tab:hover { background: var(--bg-panel); }
+
+.tabActive {
+  background: var(--bg-panel);
+  border-color: var(--accent);
+  border-bottom: 1px solid var(--bg-panel);
+  margin-bottom: -1px;
+}
+
+.tabTitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.tabActive .tabTitle { color: var(--text-primary); }
+
+.tabClose {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.tabClose:hover { background: rgba(239,68,68,0.2); color: #f87171; }
+
+.tabAdd {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-end;
+  transition: color 0.15s, background 0.15s;
+}
+.tabAdd:hover { color: var(--accent); background: var(--accent-soft); }
