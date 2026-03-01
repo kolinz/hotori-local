@@ -67,6 +67,9 @@ export interface Session {
   model: string
   started_at: string
   ended_at?: string
+  distance?: string
+  tags?: string
+  meta?: string
 }
 
 export interface Message {
@@ -74,11 +77,16 @@ export interface Message {
   session_id: string
   role: 'user' | 'assistant' | 'system'
   content: string
+  content_clean?: string
   tone?: string
+  model?: string
+  latency_ms?: number
   ttft_ms?: number
-  rating?: Rating
+  tokens_in?: number
+  tokens_out?: number
   safety_flags: string
   error: string
+  rating?: Rating
   created_at: string
 }
 
@@ -91,7 +99,6 @@ export interface AppSettings {
   reducedMotion: boolean
   defaultModel: string
   streamTimeout: number
-  understandingWords: string[]
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -103,7 +110,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reducedMotion: false,
   defaultModel: 'qwen3:0.6b',
   streamTimeout: 60,
-  understandingWords: ['なるほど', 'わかりました', '了解', '理解しました', 'わかった', 'ok', 'okay', 'そうか', 'なるほどね', 'そうですか', 'そうなんですね'],
 }
 
 export interface PngMotionConfig {
