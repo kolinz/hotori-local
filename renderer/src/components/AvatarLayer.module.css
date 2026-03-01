@@ -1,3 +1,40 @@
+/* ── アバター吹き出し ── */
+.bubble {
+  position: absolute;
+  top: 18px;
+  left: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  border-radius: 14px 14px 14px 4px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.55;
+  backdrop-filter: blur(12px);
+  z-index: 5;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  pointer-events: none;
+  text-align: center;
+}
+.bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 18px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid rgba(167, 139, 250, 0.4);
+}
+.bubbleVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* ── Root layer ── */
 .layer {
   position: absolute;

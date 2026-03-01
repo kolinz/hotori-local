@@ -11,6 +11,9 @@ interface Props {
   models: string[]
   onMotionChange: (motion: MotionName) => void
   onSessionTitleChange: (tabId: string, title: string) => void
+  onClearChat?: () => void
+  onPraiseReaction?: () => void           // 理解・納得ワード検知時のコールバック
+  avatarMessage?: string | null
 }
 
 interface UIMessage {
@@ -26,27 +29,33 @@ interface UIMessage {
 
 function genId() { return `${Date.now()}-${Math.random().toString(36).slice(2)}` }
 
-// セッションタイトルに日時を含める
 function makeSessionTitle(): string {
   const now = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
 }
 
-export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleChange }: Props) {
-  const [messages, setMessages]         = useState<UIMessage[]>([])
-  const [input, setInput]               = useState('')
-  const [isStreaming, setIsStreaming]   = useState(false)
+// 理解・納得ワード検知用の正規表現を動的生成
+function buildUnderstandingRegex(words: string[]): RegExp {
+  if (words.length === 0) return /(?!)/  // マッチしない正規表現
+  const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  return new RegExp(`^(${escaped.join('|')})[。、！!…\\s]*$`, 'i')
+}
+
+export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleChange, onClearChat, onPraiseReaction, avatarMessage }: Props) {
+  const [messages, setMessages]           = useState<UIMessage[]>([])
+  const [input, setInput]                 = useState('')
+  const [isStreaming, setIsStreaming]     = useState(false)
   const [selectedModel, setSelectedModel] = useState(settings.defaultModel)
-  const [sessionId]                     = useState(genId)
+  const [sessionId]                       = useState(genId)
   const [sessionCreated, setSessionCreated] = useState(false)
 
-  const currentRequestId  = useRef<string | null>(null)
+  const currentRequestId   = useRef<string | null>(null)
   const accumulatedContent = useRef<string>('')
-  const assistantMsgId    = useRef<string>('')   // UIとDBで同じIDを使うためのRef
-  const motionTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const messagesEndRef    = useRef<HTMLDivElement>(null)
-  const textareaRef       = useRef<HTMLTextAreaElement>(null)
+  const assistantMsgId     = useRef<string>('')
+  const motionTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const messagesEndRef     = useRef<HTMLDivElement>(null)
+  const textareaRef        = useRef<HTMLTextAreaElement>(null)
 
   const triggerPostResponseMotion = useCallback((tone: MotionName) => {
     onMotionChange(tone)
@@ -55,13 +64,13 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
   }, [onMotionChange])
 
   useEffect(() => () => { if (motionTimerRef.current) clearTimeout(motionTimerRef.current) }, [])
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, avatarMessage])
 
   // IPC listeners
   useEffect(() => {
     const unsubDelta = api.onChatDelta((p: ChatDeltaPayload) => {
       if (p.requestId !== currentRequestId.current) return
-      accumulatedContent.current += p.delta   // Refに蓄積
+      accumulatedContent.current += p.delta
       setMessages(prev => {
         const last = prev[prev.length - 1]
         if (!last || last.role !== 'assistant') return prev
@@ -75,7 +84,6 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
       if (p.requestId !== currentRequestId.current) return
       currentRequestId.current = null
 
-      // Refから確実に全文を取得（setMessagesの非同期に依存しない）
       const fullContent = accumulatedContent.current
       accumulatedContent.current = ''
       const { tone, clean } = parseToneTagged(fullContent)
@@ -90,7 +98,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
       triggerPostResponseMotion(tone)
 
       await api.appendMessage({
-        id: assistantMsgId.current,   // UIのIDと同じ
+        id: assistantMsgId.current,
         session_id: sessionId, role: 'assistant',
         content: fullContent, content_clean: clean,
         tone, model: selectedModel,
@@ -126,7 +134,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     }
     await api.createSession(session)
     setSessionCreated(true)
-    onSessionTitleChange(tabId, session.title)  // タブタイトルを日時に更新
+    onSessionTitleChange(tabId, session.title)
   }, [sessionCreated, sessionId, settings.distance, selectedModel])
 
   const send = useCallback(async () => {
@@ -136,9 +144,30 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
 
     if (motionTimerRef.current) { clearTimeout(motionTimerRef.current); motionTimerRef.current = null }
 
+    // 理解・納得ワード検知: LLMに送らずpraiseモーションで返す
+    const understandingRegex = buildUnderstandingRegex(settings.understandingWords ?? [])
+    if (understandingRegex.test(text)) {
+      const userMsg: UIMessage = { id: genId(), role: 'user', content: text, contentClean: text, tone: 'neutral', isStreaming: false }
+      setMessages(prev => [...prev, userMsg])
+      setInput('')
+      await api.appendMessage({
+        id: userMsg.id, session_id: sessionId, role: 'user',
+        content: text, content_clean: text, tone: 'neutral',
+        model: selectedModel, latency_ms: 0, ttft_ms: 0,
+        tokens_in: 0, tokens_out: 0, safety_flags: '', error: '',
+        created_at: new Date().toISOString(),
+      } as Message)
+      onMotionChange('praise')
+      motionTimerRef.current = setTimeout(() => {
+        onMotionChange('neutral')
+        onPraiseReaction?.()
+      }, 2000)
+      return
+    }
+
     const userMsg: UIMessage = { id: genId(), role: 'user', content: text, contentClean: text, tone: 'neutral', isStreaming: false }
     const asstId = genId()
-    assistantMsgId.current = asstId   // DBと同期するためRefに保存
+    assistantMsgId.current = asstId
 
     setMessages(prev => [
       ...prev, userMsg,
@@ -160,13 +189,13 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     const history = messages.map(m => ({ role: m.role, content: m.content }))
     const requestId = genId()
     currentRequestId.current = requestId
-    accumulatedContent.current = ''   // 新しいリクエスト前にリセット
+    accumulatedContent.current = ''
 
     api.chatStart({
       requestId, model: selectedModel, distance: settings.distance,
       messages: [{ role: 'system', content: systemPrompt }, ...history, { role: 'user', content: text }],
     })
-  }, [input, isStreaming, ensureSession, messages, onMotionChange, selectedModel, sessionId, settings.distance])
+  }, [input, isStreaming, ensureSession, messages, onMotionChange, onPraiseReaction, selectedModel, sessionId, settings.distance])
 
   const abort = useCallback(() => {
     if (!currentRequestId.current) return
@@ -187,11 +216,11 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     setSessionCreated(false)
     onMotionChange('neutral')
     onSessionTitleChange(tabId, '新しいセッション')
-  }, [isStreaming, onMotionChange, onSessionTitleChange, tabId])
+    onClearChat?.()
+  }, [isStreaming, onMotionChange, onSessionTitleChange, onClearChat, tabId])
 
-  // 評価ボタン
   const handleRate = useCallback(async (msgId: string, rating: 'good' | 'bad', current: 'good' | 'bad' | null | undefined) => {
-    const newRating = current === rating ? null : rating  // 同じボタンで解除
+    const newRating = current === rating ? null : rating
     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, rating: newRating } : m))
     await api.rateMessage(msgId, newRating)
   }, [])
@@ -199,6 +228,11 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
+
+  // アバターメッセージを表示すべきか
+  // ストリーミング中は非表示。ユーザーメッセージ直後でも
+  // avatarMessage がセットされていれば表示（なるほど検知後など）
+  const showAvatarMsg = !!avatarMessage && !isStreaming
 
   return (
     <div className={styles.chat}>
@@ -217,7 +251,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
       </div>
 
       <div className={styles.messages}>
-        {messages.length === 0 && (
+        {messages.length === 0 && !avatarMessage && (
           <div className={styles.welcome}>
             <p>何でも話しかけてください 👋</p>
             <p className={styles.welcomeSub}>学習のお悩み、一緒に考えましょう。</p>
@@ -229,7 +263,6 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
               {msg.contentClean}
               {msg.isStreaming && <span className={styles.cursor} />}
             </div>
-            {/* 評価ボタン（アシスタントの完了メッセージのみ） */}
             {msg.role === 'assistant' && !msg.isStreaming && msg.contentClean && (
               <div className={styles.ratingRow}>
                 <button
@@ -247,6 +280,17 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
             )}
           </div>
         ))}
+
+        {/* アバターからの話しかけメッセージ（UI演出専用・DB保存なし） */}
+        {showAvatarMsg && (
+          <div className={`${styles.message} ${styles.assistant} ${styles.avatarMsg}`}>
+            <div className={styles.avatarMsgBubble}>
+              <span className={styles.avatarMsgIcon}>✨</span>
+              {avatarMessage}
+            </div>
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 

@@ -49,6 +49,7 @@ const fallback: ElectronAPI = {
     avatarPath: '', backgroundImagePath: '', ollamaUrl: 'http://localhost:11434',
     theme: 'auto', distance: 'tutor', reducedMotion: false,
     defaultModel: 'qwen3:0.6b', streamTimeout: 60,
+    understandingWords: ['なるほど', 'わかりました', '了解', '理解しました', 'わかった', 'ok', 'okay', 'そうか', 'なるほどね', 'そうですか', 'そうなんですね'],
   }),
   setSettings: async () => {},
   loadAvatarManifest: async () => null,

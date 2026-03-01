@@ -18,7 +18,11 @@ const DISTANCES: { value: Distance; label: string; desc: string }[] = [
 ]
 
 export function SettingsModal({ settings, onSave, onClose }: Props) {
-  const [draft, setDraft] = useState<AppSettings>({ ...settings })
+  const [draft, setDraft] = useState<AppSettings>({
+    ...settings,
+    understandingWords: settings.understandingWords ?? ['なるほど', 'わかりました', '了解', '理解しました', 'わかった', 'ok', 'okay', 'そうか', 'なるほどね', 'そうですか', 'そうなんですね'],
+  })
+  const [newWord, setNewWord] = useState('')
 
   const handleAvatarPick = async () => {
     const folder = await api.openFolderDialog()
@@ -88,7 +92,7 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
               </p>
             )}
             <p className={styles.hint}>
-              フォルダに neutral / think / explain / praise / ask .png を配置してください。
+              フォルダに neutral / think / explain / praise / ask .png を配置してください。PNG形式のみ対応。
             </p>
           </Section>
 
@@ -177,6 +181,53 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 max={300}
                 onChange={e => setDraft(d => ({ ...d, streamTimeout: Number(e.target.value) }))}
               />
+            </div>
+          </Section>
+
+          {/* ── 理解・納得ワード ── */}
+          <Section title="💬 理解・納得ワード">
+            <p className={styles.hint}>
+              入力されたときにLLMへ送信せず、praiseモーション＋「まだ聞きたいことはあるかしら？」を表示するワード一覧です。
+            </p>
+            <div className={styles.wordTags}>
+              {(draft.understandingWords ?? []).map(w => (
+                <span key={w} className={styles.wordTag}>
+                  {w}
+                  <button
+                    className={styles.wordTagRemove}
+                    onClick={() => setDraft(d => ({ ...d, understandingWords: d.understandingWords.filter(x => x !== w) }))}
+                    title="削除"
+                  >✕</button>
+                </span>
+              ))}
+            </div>
+            <div className={styles.wordAddRow}>
+              <input
+                className={styles.textInput}
+                type="text"
+                placeholder="ワードを追加…"
+                value={newWord}
+                onChange={e => setNewWord(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && newWord.trim()) {
+                    const w = newWord.trim()
+                    if (!(draft.understandingWords ?? []).includes(w)) {
+                      setDraft(d => ({ ...d, understandingWords: [...(d.understandingWords ?? []), w] }))
+                    }
+                    setNewWord('')
+                  }
+                }}
+              />
+              <button
+                className={styles.pickBtn}
+                onClick={() => {
+                  const w = newWord.trim()
+                  if (w && !(draft.understandingWords ?? []).includes(w)) {
+                    setDraft(d => ({ ...d, understandingWords: [...(d.understandingWords ?? []), w] }))
+                  }
+                  setNewWord('')
+                }}
+              >追加</button>
             </div>
           </Section>
 

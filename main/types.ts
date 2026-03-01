@@ -91,6 +91,7 @@ export interface AppSettings {
   reducedMotion: boolean
   defaultModel: string
   streamTimeout: number
+  understandingWords: string[]
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -102,6 +103,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reducedMotion: false,
   defaultModel: 'qwen3:0.6b',
   streamTimeout: 60,
+  understandingWords: ['なるほど', 'わかりました', '了解', '理解しました', 'わかった', 'ok', 'okay', 'そうか', 'なるほどね', 'そうですか', 'そうなんですね'],
 }
 
 export interface PngMotionConfig {

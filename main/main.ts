@@ -141,8 +141,13 @@ ipcMain.handle(IPC.AVATAR_DEFAULT_PATH, () => {
 
 ipcMain.handle(IPC.AVATAR_READ_FILE, (_e, filePath: string) => {
   try {
+    const ext = path.extname(filePath).toLowerCase()
+    const mime = ext === '.gif'  ? 'image/gif'
+               : ext === '.webp' ? 'image/webp'
+               : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
+               : 'image/png'
     const data = fs.readFileSync(filePath)
-    return `data:image/png;base64,${data.toString('base64')}`
+    return `data:${mime};base64,${data.toString('base64')}`
   } catch (e) {
     console.warn('[main] avatar:readFile failed:', filePath, e)
     return null

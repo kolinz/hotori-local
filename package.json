@@ -42,7 +42,7 @@
     "tar": "^7.0.0"
   },
   "build": {
-    "appId": "com.learning-assistant.app",
+    "appId": "com.hotori.app",
     "productName": "学習アシスタント Hotori",
     "directories": {
       "output": "release"
