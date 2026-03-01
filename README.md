@@ -21,7 +21,7 @@ npm run dev
 ```bash
 npm run dist:win
 ```
-release フォルダ下の「学習アシスタント Hotori Setup 0.1.0.exe」をダブルクリックでインストールが始まる。
+release フォルダ下の「学習アシスタント Hotori Setup 0.1.8.exe」をダブルクリックでインストールが始まる。
 
 ## ディレクトリ構成
 
