@@ -65,7 +65,7 @@ assets/avatar/
 フォルダ内に以下の5ファイルを用意してください。
 
 ```
-my-avatar/
+assets/avatar/default-static/ 
   neutral.png   # 通常
   think.png     # 考え中
   explain.png   # 説明
