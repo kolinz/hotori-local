@@ -32,24 +32,21 @@ export default function App() {
 
   // ── アバターからの話しかけメッセージ ──
   const [avatarMessage, setAvatarMessage] = useState<string | null>('私に何を聞きたいの？')
-  const avatarMsgTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isFirstResponse    = useRef(true)
-  const isPraiseRoute      = useRef(false)   // praiseルート中はneutral→タイマーをスキップ
+  const avatarMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isFirstResponse   = useRef(true)
+  const isPraiseRoute     = useRef(false)
 
   const handleMotionChange = useCallback((m: MotionName) => {
     setMotion(m)
     if (m === 'think') {
-      // 送信時: メッセージ消去・タイマークリア
       setAvatarMessage(null)
       isPraiseRoute.current = false
       if (avatarMsgTimerRef.current) clearTimeout(avatarMsgTimerRef.current)
     } else if (m === 'neutral') {
-      // praiseルート経由のneutralはスキップ（handlePraiseReactionが処理する）
       if (isPraiseRoute.current) {
         isPraiseRoute.current = false
         return
       }
-      // 通常レスポンス完了3秒後のneutral
       if (isFirstResponse.current) {
         isFirstResponse.current = false
       } else {
@@ -70,10 +67,9 @@ export default function App() {
     setAvatarMessage('私に何を聞きたいの？')
   }, [])
 
-  // 理解・納得ワード検知時: praise モーション後に吹き出し表示
   const handlePraiseReaction = useCallback(() => {
     if (avatarMsgTimerRef.current) clearTimeout(avatarMsgTimerRef.current)
-    isPraiseRoute.current = true   // neutral が来てもタイマーをスキップさせる
+    isPraiseRoute.current = true
     setAvatarMessage('まだ聞きたいことはあるかしら？')
     setMotion('ask')
   }, [])
@@ -84,6 +80,7 @@ export default function App() {
   const [tabs, setTabs]               = useState<TabInfo[]>(() => [newTab()])
   const [activeTabId, setActiveTabId] = useState<string>(() => tabs[0].id)
 
+  // ── 設定読み込み ──
   useEffect(() => {
     api.getSettings().then(async s => {
       const defaultPath = await api.getAvatarDefaultPath()
@@ -94,13 +91,25 @@ export default function App() {
     })
   }, [])
 
+  // ── モデル一覧取得 ──
+  // OpenAIモード: settings から登録モデルを使う（API不要）
+  // Ollamaモード: Ollama から動的取得
   useEffect(() => {
-    api.listModels().then(m => {
-      setModels(m)
-      setOllamaOnline(m.length > 0)
-    })
-  }, [])
+    if (!settings) return
+    if (settings.connectionMode === 'openai') {
+      const openaiModels = settings.openaiModels ?? []
+      setModels(openaiModels)
+      // OpenAIモードはAPIキーがあれば「オンライン」扱い
+      setOllamaOnline(openaiModels.length > 0 ? true : null)
+    } else {
+      api.listModels().then(m => {
+        setModels(m)
+        setOllamaOnline(m.length > 0)
+      })
+    }
+  }, [settings?.connectionMode, settings?.openaiModels, settings?.ollamaUrl])
 
+  // ── 背景画像 ──
   useEffect(() => {
     if (!settings?.backgroundImagePath) { setBgDataUrl(''); return }
     api.readAvatarFile(settings.backgroundImagePath).then(d => setBgDataUrl(d ?? ''))
@@ -110,7 +119,13 @@ export default function App() {
     await api.setSettings(next)
     setSettings(next)
     setShowSettings(false)
-    api.listModels().then(m => { setModels(m); setOllamaOnline(m.length > 0) })
+    // モード切り替え後にモデル一覧を再取得
+    if (next.connectionMode === 'openai') {
+      setModels(next.openaiModels ?? [])
+      setOllamaOnline((next.openaiModels ?? []).length > 0 ? true : null)
+    } else {
+      api.listModels().then(m => { setModels(m); setOllamaOnline(m.length > 0) })
+    }
   }
 
   const handleTabTitleUpdate = useCallback((tabId: string, title: string) => {
@@ -151,6 +166,17 @@ export default function App() {
   }, [resetAvatarMessage])
 
   if (!settings) return null
+
+  // OpenAIモードでモデル未登録の場合はガイド表示
+  const isOffline = settings.connectionMode === 'openai'
+    ? (settings.openaiModels ?? []).length === 0 || !settings.openaiApiKey
+    : ollamaOnline === false
+
+  // モードに合わせて defaultModel を解決して Chat に渡す
+  // OpenAI モードのとき qwen3:0.6b などの Ollama 用モデル名が送られるのを防ぐ
+  const resolvedSettings = settings.connectionMode === 'openai'
+    ? { ...settings, defaultModel: (settings.openaiModels ?? [])[0] ?? settings.defaultModel }
+    : settings
 
   return (
     <div className={styles.root}>
@@ -199,13 +225,13 @@ export default function App() {
           className={styles.chatPane}
           style={bgDataUrl ? { backgroundColor: 'rgba(10,10,26,0.55)', backdropFilter: 'blur(2px)' } : undefined}
         >
-          {ollamaOnline === false
-            ? <OllamaGuide />
+          {isOffline
+            ? <OllamaGuide connectionMode={settings.connectionMode} />
             : tabs.map(tab => (
                 <div key={tab.id} style={{ display: tab.id === activeTabId ? 'contents' : 'none' }}>
                   <Chat
                     tabId={tab.id}
-                    settings={settings}
+                    settings={resolvedSettings}
                     models={models}
                     onMotionChange={tab.id === activeTabId ? handleMotionChange : () => {}}
                     onSessionTitleChange={handleTabTitleUpdate}
