@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api, AppSettings } from '../utils/electronAPI'
 import type { Distance, MotionName, ConnectionMode } from '../../../main/types'
-import { ALL_MOTIONS, DEFAULT_UNDERSTANDING_WORDS } from '../../../main/types'
+import { ALL_MOTIONS, DEFAULT_UNDERSTANDING_WORDS, OPENAI_PRESET_MODELS } from '../../../main/types'
 import styles from './Modal.module.css'
 
 interface Props {
@@ -27,16 +27,18 @@ const MOTION_LABELS: Record<MotionName, string> = {
 }
 
 const CONNECTION_MODES: { value: ConnectionMode; label: string; desc: string }[] = [
-  { value: 'ollama', label: 'Ollama', desc: 'ローカルLLM（現在利用可能）' },
-  // 将来追加予定:
-  // { value: 'dify',             label: 'Dify',             desc: 'Dify API連携' },
-  // { value: 'openai-compatible', label: 'OpenAI互換',      desc: 'OpenAI互換エンドポイント' },
+  { value: 'ollama', label: 'Ollama', desc: 'ローカルLLM' },
+  { value: 'openai', label: 'OpenAI', desc: 'ChatGPT API' },
+  // 将来: { value: 'dify', label: 'Dify', desc: 'Dify API連携' },
 ]
 
 export function SettingsModal({ settings, onSave, onClose }: Props) {
-  const [draft, setDraft] = useState<AppSettings>({ ...settings })
-  const [newWord, setNewWord] = useState('')
+  const [draft, setDraft]         = useState<AppSettings>({ ...settings })
+  const [newWord, setNewWord]     = useState('')
+  const [newModel, setNewModel]   = useState('')
+  const [showApiKey, setShowApiKey] = useState(false)
 
+  // ── 理解・納得ワード ──
   const handleAddWord = () => {
     const w = newWord.trim()
     if (!w) return
@@ -45,20 +47,36 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
     setDraft(d => ({ ...d, understandingWords: [...current, w] }))
     setNewWord('')
   }
-
   const handleRemoveWord = (word: string) => {
     setDraft(d => ({ ...d, understandingWords: (d.understandingWords ?? []).filter(w => w !== word) }))
   }
-
   const handleResetWords = () => {
     setDraft(d => ({ ...d, understandingWords: [...DEFAULT_UNDERSTANDING_WORDS] }))
   }
 
+  // ── OpenAI モデル管理 ──
+  const handleAddModel = () => {
+    const m = newModel.trim()
+    if (!m) return
+    const current = draft.openaiModels ?? []
+    if (current.includes(m)) { setNewModel(''); return }
+    setDraft(d => ({ ...d, openaiModels: [...current, m] }))
+    setNewModel('')
+  }
+  const handleRemoveModel = (model: string) => {
+    setDraft(d => ({ ...d, openaiModels: (d.openaiModels ?? []).filter(m => m !== model) }))
+  }
+  const handleAddPresetModel = (model: string) => {
+    const current = draft.openaiModels ?? []
+    if (current.includes(model)) return
+    setDraft(d => ({ ...d, openaiModels: [...current, model] }))
+  }
+
+  // ── アバター ──
   const handleAvatarPick = async () => {
     const folder = await api.openFolderDialog()
     if (folder) setDraft(d => ({ ...d, avatarPath: folder }))
   }
-
   const handleBgPick = async () => {
     const file = await api.openFileDialog(['png', 'jpg', 'jpeg', 'webp', 'gif'])
     if (file) setDraft(d => ({ ...d, backgroundImagePath: file }))
@@ -67,21 +85,19 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
   const toggleMotion = (motion: MotionName) => {
     setDraft(d => {
       const current = d.enabledMotions ?? [...ALL_MOTIONS]
-      // neutral は必ず有効（フォールバック先）
       if (motion === 'neutral') return d
       const next = current.includes(motion)
         ? current.filter(m => m !== motion)
         : [...current, motion]
-      // 最低1つは有効にする（neutralは常に含まれる）
       return { ...d, enabledMotions: next.length > 0 ? next : current }
     })
   }
 
-  const handleSave = () => {
-    onSave({ ...draft })
-  }
+  const handleSave = () => { onSave({ ...draft }) }
 
-  const enabledMotions = draft.enabledMotions ?? [...ALL_MOTIONS]
+  const enabledMotions  = draft.enabledMotions ?? [...ALL_MOTIONS]
+  const openaiModels    = draft.openaiModels ?? []
+  const isOpenAI        = draft.connectionMode === 'openai'
 
   return (
     <div className={styles.overlay} onClick={onClose}>
@@ -95,6 +111,7 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
 
           {/* ── 接続設定 ── */}
           <Section title="🔗 接続設定">
+            {/* モード選択 */}
             <div className={styles.row}>
               <span className={styles.label}>接続モード</span>
               <div className={styles.distanceGrid}>
@@ -110,18 +127,114 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 ))}
               </div>
             </div>
-            <div className={styles.row}>
-              <span className={styles.label}>Ollama URL</span>
-              <input
-                className={styles.textInput}
-                type="text"
-                placeholder="http://localhost:11434"
-                value={draft.ollamaUrl ?? 'http://localhost:11434'}
-                onChange={e => setDraft(d => ({ ...d, ollamaUrl: e.target.value }))}
-                spellCheck={false}
-              />
-            </div>
-            <p className={styles.hint}>Ollamaのエンドポイント。リモートサーバーに接続する場合は変更してください。</p>
+
+            {/* Ollama 設定 */}
+            {!isOpenAI && (
+              <>
+                <div className={styles.row}>
+                  <span className={styles.label}>Ollama URL</span>
+                  <input
+                    className={styles.textInput}
+                    type="text"
+                    placeholder="http://localhost:11434"
+                    value={draft.ollamaUrl ?? 'http://localhost:11434'}
+                    onChange={e => setDraft(d => ({ ...d, ollamaUrl: e.target.value }))}
+                    spellCheck={false}
+                  />
+                </div>
+                <p className={styles.hint}>Ollamaのエンドポイント。リモートサーバーに接続する場合は変更してください。</p>
+              </>
+            )}
+
+            {/* OpenAI 設定 */}
+            {isOpenAI && (
+              <>
+                {/* APIキー */}
+                <div className={styles.row}>
+                  <span className={styles.label}>APIキー</span>
+                  <div className={styles.apiKeyRow}>
+                    <input
+                      className={styles.textInput}
+                      type={showApiKey ? 'text' : 'password'}
+                      placeholder="sk-..."
+                      value={draft.openaiApiKey ?? ''}
+                      onChange={e => setDraft(d => ({ ...d, openaiApiKey: e.target.value }))}
+                      spellCheck={false}
+                    />
+                    <button
+                      className={styles.toggleVisBtn}
+                      onClick={() => setShowApiKey(v => !v)}
+                      title={showApiKey ? '隠す' : '表示'}
+                    >
+                      {showApiKey ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* カスタムエンドポイント */}
+                <div className={styles.row}>
+                  <span className={styles.label}>エンドポイント</span>
+                  <input
+                    className={styles.textInput}
+                    type="text"
+                    placeholder="https://api.openai.com"
+                    value={draft.openaiBaseUrl ?? 'https://api.openai.com'}
+                    onChange={e => setDraft(d => ({ ...d, openaiBaseUrl: e.target.value }))}
+                    spellCheck={false}
+                  />
+                </div>
+                <p className={styles.hint}>OpenAI互換APIを使う場合はエンドポイントを変更してください。</p>
+
+                {/* モデル管理 */}
+                <div className={styles.label} style={{ marginBottom: 8, marginTop: 12 }}>使用するモデル</div>
+
+                {/* 登録済みモデル */}
+                <div className={styles.wordChips} style={{ marginBottom: 8 }}>
+                  {openaiModels.length === 0 && (
+                    <span className={styles.hint}>モデルが登録されていません</span>
+                  )}
+                  {openaiModels.map(m => (
+                    <span key={m} className={styles.wordChip}>
+                      {m}
+                      <button
+                        className={styles.wordChipRemove}
+                        onClick={() => handleRemoveModel(m)}
+                        title="削除"
+                      >✕</button>
+                    </span>
+                  ))}
+                </div>
+
+                {/* プリセット */}
+                <div className={styles.presetRow}>
+                  <span className={styles.hint} style={{ marginRight: 8 }}>プリセット:</span>
+                  {OPENAI_PRESET_MODELS.map(m => (
+                    <button
+                      key={m}
+                      className={`${styles.presetBtn} ${openaiModels.includes(m) ? styles.presetBtnAdded : ''}`}
+                      onClick={() => handleAddPresetModel(m)}
+                      disabled={openaiModels.includes(m)}
+                      title={openaiModels.includes(m) ? '追加済み' : '追加'}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 手動追加 */}
+                <div className={styles.wordAddRow} style={{ marginTop: 8 }}>
+                  <input
+                    className={styles.wordInput}
+                    type="text"
+                    placeholder="モデル名を入力（例: gpt-4-turbo）"
+                    value={newModel}
+                    onChange={e => setNewModel(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddModel() } }}
+                  />
+                  <button className={styles.wordAddBtn} onClick={handleAddModel}>追加</button>
+                </div>
+              </>
+            )}
           </Section>
 
           {/* ── アバター ── */}
@@ -132,32 +245,20 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 <input
                   className={styles.pathInput}
                   value={draft.avatarPath || '（未設定）'}
-                  readOnly
-                  title={draft.avatarPath}
+                  readOnly title={draft.avatarPath}
                 />
-                <button className={styles.pickBtn} onClick={handleAvatarPick}>
-                  📁 選択
-                </button>
+                <button className={styles.pickBtn} onClick={handleAvatarPick}>📁 選択</button>
                 {draft.avatarPath && (
-                  <button className={styles.clearBtn} onClick={() => setDraft(d => ({ ...d, avatarPath: '' }))}>
-                    ✕
-                  </button>
+                  <button className={styles.clearBtn} onClick={() => setDraft(d => ({ ...d, avatarPath: '' }))}>✕</button>
                 )}
               </div>
             </div>
-            {draft.avatarPath && (
-              <p className={styles.pathDebug}>
-                📂 {draft.avatarPath}
-              </p>
-            )}
-            <p className={styles.hint}>
-              フォルダに neutral / think / explain / praise / ask .png を配置してください。
-            </p>
+            {draft.avatarPath && <p className={styles.pathDebug}>📂 {draft.avatarPath}</p>}
+            <p className={styles.hint}>フォルダに neutral / think / explain / praise / ask .png を配置してください。</p>
           </Section>
 
           {/* ── アバター動作 ── */}
           <Section title="🎬 アバター動作">
-            {/* toneTag連携 */}
             <label className={styles.toggle}>
               <input
                 type="checkbox"
@@ -169,8 +270,6 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
             <p className={styles.hint} style={{ marginTop: 6, marginBottom: 14 }}>
               オフにすると、アバターはモーションを変化させず neutral のまま維持します。
             </p>
-
-            {/* 使用するモーション */}
             <div className={styles.label} style={{ marginBottom: 8 }}>使用するモーション</div>
             <div className={styles.motionCheckList}>
               {ALL_MOTIONS.map(m => {
@@ -182,20 +281,13 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                     className={`${styles.motionCheckItem} ${isNeutral ? styles.motionCheckDisabled : ''}`}
                     title={isNeutral ? 'neutral は常に有効です（フォールバック）' : ''}
                   >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={isNeutral}
-                      onChange={() => toggleMotion(m)}
-                    />
+                    <input type="checkbox" checked={checked} disabled={isNeutral} onChange={() => toggleMotion(m)} />
                     <span>{MOTION_LABELS[m]}</span>
                   </label>
                 )
               })}
             </div>
-            <p className={styles.hint}>
-              オフにしたモーションが指定された場合、neutral にフォールバックします。
-            </p>
+            <p className={styles.hint}>オフにしたモーションが指定された場合、neutral にフォールバックします。</p>
           </Section>
 
           {/* ── 背景画像 ── */}
@@ -206,22 +298,15 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 <input
                   className={styles.pathInput}
                   value={draft.backgroundImagePath || '（未設定）'}
-                  readOnly
-                  title={draft.backgroundImagePath}
+                  readOnly title={draft.backgroundImagePath}
                 />
-                <button className={styles.pickBtn} onClick={handleBgPick}>
-                  📁 選択
-                </button>
+                <button className={styles.pickBtn} onClick={handleBgPick}>📁 選択</button>
                 {draft.backgroundImagePath && (
-                  <button className={styles.clearBtn} onClick={() => setDraft(d => ({ ...d, backgroundImagePath: '' }))}>
-                    ✕
-                  </button>
+                  <button className={styles.clearBtn} onClick={() => setDraft(d => ({ ...d, backgroundImagePath: '' }))}>✕</button>
                 )}
               </div>
             </div>
-            {draft.backgroundImagePath && (
-              <p className={styles.pathDebug}>📂 {draft.backgroundImagePath}</p>
-            )}
+            {draft.backgroundImagePath && <p className={styles.pathDebug}>📂 {draft.backgroundImagePath}</p>}
             <p className={styles.hint}>PNG / JPG / WebP / GIF に対応。チャット画面の背景に表示されます。</p>
           </Section>
 
@@ -238,22 +323,14 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
             <p className={styles.hint} style={{ marginTop: 6, marginBottom: 14 }}>
               オンにすると、ユーザーが登録ワードを入力したとき、LLMに送信せず praise モーションで反応します。
             </p>
-
-            {/* ワード一覧 */}
             <div className={styles.wordChips}>
               {(draft.understandingWords ?? []).map(w => (
                 <span key={w} className={styles.wordChip}>
                   {w}
-                  <button
-                    className={styles.wordChipRemove}
-                    onClick={() => handleRemoveWord(w)}
-                    title="削除"
-                  >✕</button>
+                  <button className={styles.wordChipRemove} onClick={() => handleRemoveWord(w)} title="削除">✕</button>
                 </span>
               ))}
             </div>
-
-            {/* ワード追加 */}
             <div className={styles.wordAddRow}>
               <input
                 className={styles.wordInput}
@@ -282,9 +359,7 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 </button>
               ))}
             </div>
-            <p className={styles.hint}>
-              現在: {DISTANCES.find(d => d.value === draft.distance)?.desc}
-            </p>
+            <p className={styles.hint}>現在: {DISTANCES.find(d => d.value === draft.distance)?.desc}</p>
           </Section>
 
           {/* ── テーマ ── */}
@@ -322,8 +397,7 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 type="number"
                 className={styles.numInput}
                 value={draft.streamTimeout}
-                min={10}
-                max={300}
+                min={10} max={300}
                 onChange={e => setDraft(d => ({ ...d, streamTimeout: Number(e.target.value) }))}
               />
             </div>

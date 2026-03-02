@@ -508,3 +508,55 @@
   border-color: rgba(239, 68, 68, 0.4);
   color: #f87171;
 }
+
+/* ── OpenAI APIキー行 ── */
+.apiKeyRow {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  align-items: center;
+}
+
+.toggleVisBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.toggleVisBtn:hover { background: var(--accent-soft); }
+
+/* ── OpenAI プリセットモデル ── */
+.presetRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.presetBtn {
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: monospace;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.presetBtn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.presetBtnAdded {
+  opacity: 0.4;
+  cursor: default;
+}
