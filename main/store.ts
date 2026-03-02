@@ -175,10 +175,11 @@ export function exportSessionCsv(sessionId: string, outputPath: string): void {
   const session = getSession(sessionId)
   const messages = getSessionMessages(sessionId)
   const distance = session?.distance ?? ''
-  const header = 'created_at,role,model,distance,ttft_ms,rating,content'
+  const header = 'session_id,created_at,role,model,distance,ttft_ms,rating,content'
   const rows = messages
     .filter(m => m.role !== 'system')
     .map(m => [
+      m.session_id,
       m.created_at,
       m.role,
       m.model ?? '', 
