@@ -7,7 +7,7 @@
 
 - Node.js 20+
 - [Ollama](https://ollama.com/) (起動済み)
-- 動作確認済みモデル：gemma3:1b , qwen3:0.6b . qwen3:1.7b , qwen3:4b
+- 動作確認済みモデル：llama3.2:3b , gemma3:1b , qwen3:0.6b . qwen3:1.7b , qwen3:4b
 
 ## セットアップ
 
