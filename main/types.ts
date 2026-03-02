@@ -29,6 +29,12 @@ export type Distance = 'friend' | 'tutor' | 'buddy' | 'calm' | 'cheerful'
 export type MotionName = 'neutral' | 'think' | 'explain' | 'praise' | 'ask'
 export type Rating = 'good' | 'bad' | null
 
+/**
+ * 接続モード
+ * 現在は 'ollama' のみ実装。将来 'dify' | 'openai-compatible' を追加予定。
+ */
+export type ConnectionMode = 'ollama'
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
@@ -67,9 +73,6 @@ export interface Session {
   model: string
   started_at: string
   ended_at?: string
-  distance?: string
-  tags?: string
-  meta?: string
 }
 
 export interface Message {
@@ -77,20 +80,17 @@ export interface Message {
   session_id: string
   role: 'user' | 'assistant' | 'system'
   content: string
-  content_clean?: string
   tone?: string
-  model?: string
-  latency_ms?: number
   ttft_ms?: number
-  tokens_in?: number
-  tokens_out?: number
+  rating?: Rating
   safety_flags: string
   error: string
-  rating?: Rating
   created_at: string
 }
 
 export interface AppSettings {
+  // ── 接続設定 ──
+  connectionMode: ConnectionMode   // 将来の拡張ポイント
   avatarPath: string
   backgroundImagePath: string
   ollamaUrl: string
@@ -99,9 +99,25 @@ export interface AppSettings {
   reducedMotion: boolean
   defaultModel: string
   streamTimeout: number
+
+  // ── アバター動作 ──
+  toneTagEnabled: boolean          // toneTag → アバターモーション連携
+  enabledMotions: MotionName[]     // 使用するモーション一覧
+
+  // ── 理解・納得ワード ──
+  understandingWordsEnabled: boolean  // 理解・納得ワード機能オン/オフ
+  understandingWords: string[]        // 検知ワード一覧
 }
 
+export const ALL_MOTIONS: MotionName[] = ['neutral', 'think', 'explain', 'praise', 'ask']
+
+export const DEFAULT_UNDERSTANDING_WORDS: string[] = [
+  'なるほど', 'わかりました', '了解', '理解しました', 'そうか', 'なるほどね',
+  'わかった', 'そっか', 'なるほど！', 'わかりました！', '理解できました',
+]
+
 export const DEFAULT_SETTINGS: AppSettings = {
+  connectionMode: 'ollama',
   avatarPath: '',
   backgroundImagePath: '',
   ollamaUrl: 'http://localhost:11434',
@@ -110,6 +126,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reducedMotion: false,
   defaultModel: 'qwen3:0.6b',
   streamTimeout: 60,
+  toneTagEnabled: true,
+  enabledMotions: [...ALL_MOTIONS],
+  understandingWordsEnabled: true,
+  understandingWords: [...DEFAULT_UNDERSTANDING_WORDS],
 }
 
 export interface PngMotionConfig {
