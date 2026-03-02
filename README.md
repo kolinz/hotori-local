@@ -2,6 +2,13 @@
 
 Electron + React + Vite + TypeScript + Ollama による学習支援デスクトップアプリ
 
+## 特長
+
+- AIモデルとの会話をCSVファイルとしてダウンロードする機能。ChatGPTやGeminiに課金してもない機能
+- 親近感を持つ画像設定。アバター画像と背景画像は任意のものに変更可能。
+- 会話（レスポンス）の評価機能。Good or Bad
+- セルフホスト型およびPC内運用のローカルLLMおよびSLM向け
+
 ## 必要環境
 
 - Node.js 20+
