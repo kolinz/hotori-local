@@ -1,13 +1,13 @@
 # 学習アシスタント Hotori
 
-- Electron + React + Vite + TypeScript + Ollama による学習支援デスクトップアプリ
-- SDDで開発 --> [仕様書](https://github.com/kolinz/hotori-local/blob/main/docs/hotori-specification-SDD-v0.1.8e.md)
+Electron + React + Vite + TypeScript + Ollama による学習支援デスクトップアプリ
 
 ## 必要環境
 
 - Node.js 20+
 - [Ollama](https://ollama.com/) (起動済み)
-- 動作確認済みモデル：llama3.2:3b , gemma3:1b , qwen3:0.6b . qwen3:1.7b , qwen3:4b
+- 推奨モデル: `llama3.2:3b` または `gemma3:1b`
+- 動作確認済みモデル: `llama3.2:3b`, `gemma3:1b`, `qwen3:0.6b`, `qwen3:1.7b`, `qwen3:4b`
 
 ## セットアップ
 
@@ -22,7 +22,16 @@ npm run dev
 ```bash
 npm run dist:win
 ```
-release フォルダ下の「学習アシスタント Hotori Setup 0.1.8.exe」をダブルクリックでインストールが始まる。
+
+## モデル別動作メモ
+
+| モデル | 評価 | 備考 |
+|--------|------|------|
+| llama3.2:3b | ⭐ 推奨 | バランス良好、日本語安定、TTFT約2.6秒 |
+| gemma3:1b | ⭐ 推奨 | 内容充実、高速（TTFT約860ms）、Markdown出力あり |
+| qwen3:0.6b | △ | 軽量だが回答が薄め |
+| qwen3:1.7b | △ | システムプロンプト追従が弱い場合あり |
+| qwen3:4b | △ | 応答に時間がかかる（TTFT約23秒） |
 
 ## ディレクトリ構成
 
@@ -54,26 +63,21 @@ assets/avatar/
 
 ## アバター設定
 
-設定画面からアバターフォルダを指定できます。
-
-### 画像仕様
-
-| 項目 | 推奨サイズ | 対応形式 | 備考 |
-|------|-----------|---------|------|
-| アバター画像 | 400 × 600 px | PNG のみ | 縦長2:3比率。表示エリア幅220px |
-| 背景画像 | 1280 × 800 px | PNG / JPG / WebP / GIF | アプリウィンドウ比率に合わせてトリミングされます |
-
-### アバターフォルダ構成
-
-フォルダ内に以下の5ファイルを用意してください。
+設定画面からアバターフォルダを指定できます。  
+フォルダ構成は `assets/avatar/manifest.json` を参考にしてください。
 
 ```
-assets/avatar/default-static/ 
-  neutral.png   # 通常
-  think.png     # 考え中
-  explain.png   # 説明
-  praise.png    # 褒める
-  ask.png       # 質問
+my-avatar/
+  manifest.json
+  webm/
+    neutral.webm
+    think.webm
+    explain.webm
+    praise.webm
+    ask.webm
+  png/
+    neutral/0001.png, 0002.png ...
+    think/...
 ```
 
-アバターが未設定の場合は、組み込みのCSSアニメーションプレースホルダーが表示されます。
+アバターが未設定の場合は、組み込みのCSSアニメーションプレースホルダーが表示されます。****
