@@ -31,9 +31,11 @@ export type Rating = 'good' | 'bad' | null
 
 /**
  * 接続モード
- * 現在は 'ollama' のみ実装。将来 'dify' | 'openai-compatible' を追加予定。
+ * 'ollama': ローカルLLM（Ollama）
+ * 'openai': OpenAI API（ChatGPT）
+ * 将来: | 'dify' など
  */
-export type ConnectionMode = 'ollama'
+export type ConnectionMode = 'ollama' | 'openai'
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
@@ -90,10 +92,16 @@ export interface Message {
 
 export interface AppSettings {
   // ── 接続設定 ──
-  connectionMode: ConnectionMode   // 将来の拡張ポイント
+  connectionMode: ConnectionMode
+  // Ollama
+  ollamaUrl: string
+  // OpenAI
+  openaiApiKey: string           // APIキー（平文・個人PC用途）
+  openaiModels: string[]         // ユーザーが登録したモデル一覧
+  openaiBaseUrl: string          // カスタムエンドポイント（デフォルト: OpenAI公式）
+
   avatarPath: string
   backgroundImagePath: string
-  ollamaUrl: string
   theme: 'light' | 'dark' | 'auto'
   distance: Distance
   reducedMotion: boolean
@@ -101,12 +109,12 @@ export interface AppSettings {
   streamTimeout: number
 
   // ── アバター動作 ──
-  toneTagEnabled: boolean          // toneTag → アバターモーション連携
-  enabledMotions: MotionName[]     // 使用するモーション一覧
+  toneTagEnabled: boolean
+  enabledMotions: MotionName[]
 
   // ── 理解・納得ワード ──
-  understandingWordsEnabled: boolean  // 理解・納得ワード機能オン/オフ
-  understandingWords: string[]        // 検知ワード一覧
+  understandingWordsEnabled: boolean
+  understandingWords: string[]
 }
 
 export const ALL_MOTIONS: MotionName[] = ['neutral', 'think', 'explain', 'praise', 'ask']
@@ -116,11 +124,21 @@ export const DEFAULT_UNDERSTANDING_WORDS: string[] = [
   'わかった', 'そっか', 'なるほど！', 'わかりました！', '理解できました',
 ]
 
+export const OPENAI_PRESET_MODELS: string[] = [
+  'gpt-5-nano-2025-08-07',
+  'gpt-4.1-nano-2025-04-14',
+  'gpt-4o',
+  'gpt-4o-mini',
+]
+
 export const DEFAULT_SETTINGS: AppSettings = {
   connectionMode: 'ollama',
+  ollamaUrl: 'http://localhost:11434',
+  openaiApiKey: '',
+  openaiModels: ['gpt-5-nano-2025-08-07', 'gpt-4.1-nano-2025-04-14'],
+  openaiBaseUrl: 'https://api.openai.com',
   avatarPath: '',
   backgroundImagePath: '',
-  ollamaUrl: 'http://localhost:11434',
   theme: 'auto',
   distance: 'tutor',
   reducedMotion: false,
