@@ -12,7 +12,7 @@ interface Props {
   onMotionChange: (motion: MotionName) => void
   onSessionTitleChange: (tabId: string, title: string) => void
   onClearChat?: () => void
-  onPraiseReaction?: () => void           // 理解・納得ワード検知時のコールバック
+  onPraiseReaction?: () => void
   avatarMessage?: string | null
 }
 
@@ -35,9 +35,8 @@ function makeSessionTitle(): string {
   return `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
 }
 
-// 理解・納得ワード検知用の正規表現を動的生成
 function buildUnderstandingRegex(words: string[]): RegExp {
-  if (words.length === 0) return /(?!)/  // マッチしない正規表現
+  if (words.length === 0) return /(?!)/
   const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
   return new RegExp(`^(${escaped.join('|')})[。、！!…\\s]*$`, 'i')
 }
@@ -57,6 +56,18 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
   const messagesEndRef     = useRef<HTMLDivElement>(null)
   const textareaRef        = useRef<HTMLTextAreaElement>(null)
 
+  const toneTagEnabled            = settings.toneTagEnabled ?? true
+  const enabledMotions            = settings.enabledMotions ?? undefined
+  const understandingWordsEnabled = settings.understandingWordsEnabled ?? true
+
+  const resolveTone = useCallback((text: string): { tone: MotionName; clean: string } => {
+    if (!toneTagEnabled) {
+      const { clean } = parseToneTagged(text, [])
+      return { tone: 'neutral', clean }
+    }
+    return parseToneTagged(text, enabledMotions)
+  }, [toneTagEnabled, enabledMotions])
+
   const triggerPostResponseMotion = useCallback((tone: MotionName) => {
     onMotionChange(tone)
     if (motionTimerRef.current) clearTimeout(motionTimerRef.current)
@@ -66,7 +77,6 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
   useEffect(() => () => { if (motionTimerRef.current) clearTimeout(motionTimerRef.current) }, [])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, avatarMessage])
 
-  // IPC listeners
   useEffect(() => {
     const unsubDelta = api.onChatDelta((p: ChatDeltaPayload) => {
       if (p.requestId !== currentRequestId.current) return
@@ -75,7 +85,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
         const last = prev[prev.length - 1]
         if (!last || last.role !== 'assistant') return prev
         const newContent = last.content + p.delta
-        const { clean } = parseToneTagged(newContent)
+        const { clean } = resolveTone(newContent)
         return [...prev.slice(0, -1), { ...last, content: newContent, contentClean: clean }]
       })
     })
@@ -86,7 +96,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
 
       const fullContent = accumulatedContent.current
       accumulatedContent.current = ''
-      const { tone, clean } = parseToneTagged(fullContent)
+      const { tone, clean } = resolveTone(fullContent)
 
       setMessages(prev => {
         const last = prev[prev.length - 1]
@@ -121,7 +131,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     })
 
     return () => { unsubDelta(); unsubDone(); unsubError() }
-  }, [sessionId, selectedModel, onMotionChange, triggerPostResponseMotion])
+  }, [sessionId, selectedModel, onMotionChange, triggerPostResponseMotion, resolveTone])
 
   const ensureSession = useCallback(async () => {
     if (sessionCreated) return
@@ -144,8 +154,11 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
 
     if (motionTimerRef.current) { clearTimeout(motionTimerRef.current); motionTimerRef.current = null }
 
-    // 理解・納得ワード検知: LLMに送らずpraiseモーションで返す
-    const understandingRegex = buildUnderstandingRegex(settings.understandingWords ?? [])
+    // 理解・納得ワード検知: 機能がオンのときのみ
+    const understandingRegex = understandingWordsEnabled
+      ? buildUnderstandingRegex(settings.understandingWords ?? [])
+      : /(?!)/
+
     if (understandingRegex.test(text)) {
       const userMsg: UIMessage = { id: genId(), role: 'user', content: text, contentClean: text, tone: 'neutral', isStreaming: false }
       setMessages(prev => [...prev, userMsg])
@@ -175,7 +188,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     ])
     setInput('')
     setIsStreaming(true)
-    onMotionChange('think')
+    if (toneTagEnabled) onMotionChange('think')
 
     await api.appendMessage({
       id: userMsg.id, session_id: sessionId, role: 'user',
@@ -185,7 +198,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
       created_at: new Date().toISOString(),
     } as Message)
 
-    const systemPrompt = buildSystemPrompt(settings.distance)
+    const systemPrompt = buildSystemPrompt(settings.distance, toneTagEnabled)
     const history = messages.map(m => ({ role: m.role, content: m.content }))
     const requestId = genId()
     currentRequestId.current = requestId
@@ -195,7 +208,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
       requestId, model: selectedModel, distance: settings.distance,
       messages: [{ role: 'system', content: systemPrompt }, ...history, { role: 'user', content: text }],
     })
-  }, [input, isStreaming, ensureSession, messages, onMotionChange, onPraiseReaction, selectedModel, sessionId, settings.distance])
+  }, [input, isStreaming, ensureSession, messages, onMotionChange, onPraiseReaction, selectedModel, sessionId, settings.distance, settings.understandingWords, toneTagEnabled, understandingWordsEnabled])
 
   const abort = useCallback(() => {
     if (!currentRequestId.current) return
@@ -229,9 +242,6 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
 
-  // アバターメッセージを表示すべきか
-  // ストリーミング中は非表示。ユーザーメッセージ直後でも
-  // avatarMessage がセットされていれば表示（なるほど検知後など）
   const showAvatarMsg = !!avatarMessage && !isStreaming
 
   return (
