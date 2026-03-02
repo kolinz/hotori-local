@@ -70,20 +70,15 @@ assets/avatar/
 ## アバター設定
 
 設定画面からアバターフォルダを指定できます。  
-フォルダ構成は `assets/avatar/manifest.json` を参考にしてください。
+フォルダ構成は `assets/avatar/default-static/manifest.json` を参考にしてください。
 
 ```
-my-avatar/
   manifest.json
-  webm/
-    neutral.webm
-    think.webm
-    explain.webm
-    praise.webm
-    ask.webm
-  png/
-    neutral/0001.png, 0002.png ...
-    think/...
+  neutral.png
+  think.png
+  explain.png
+  praise.png
+  ask.png
 ```
 
 アバターが未設定の場合は、組み込みのCSSアニメーションプレースホルダーが表示されます。****
