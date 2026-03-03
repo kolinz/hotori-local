@@ -75,6 +75,9 @@ export interface Session {
   model: string
   started_at: string
   ended_at?: string
+  distance?: string
+  tags?: string
+  meta?: string
 }
 
 export interface Message {
@@ -82,11 +85,16 @@ export interface Message {
   session_id: string
   role: 'user' | 'assistant' | 'system'
   content: string
+  content_clean?: string
   tone?: string
+  model?: string
+  latency_ms?: number
   ttft_ms?: number
-  rating?: Rating
+  tokens_in?: number
+  tokens_out?: number
   safety_flags: string
   error: string
+  rating?: Rating
   created_at: string
 }
 
