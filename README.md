@@ -28,6 +28,7 @@ npm run dev
 
 ## ビルド・配布 (Windows)
 
+Windows環境では、ターミナルアプリを「管理者として実行」を行ってください。
 ```bash
 npm run dist:win
 ```
