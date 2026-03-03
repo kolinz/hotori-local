@@ -86,35 +86,7 @@
   margin-bottom: 12px;
 }
 
-/* ── Model mode toggle ── */
-.modelModeToggle {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 10px;
-  background: var(--bg-input);
-  border-radius: var(--radius-sm);
-  padding: 3px;
-}
-.modeBtn {
-  flex: 1;
-  padding: 5px 10px;
-  border-radius: 5px;
-  font-size: 12px;
-  color: var(--text-muted);
-  transition: all 0.15s;
-  background: transparent;
-}
-.modeBtn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.modeBtnActive {
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-/* ── Text input (model manual) ── */
+/* ── Text input ── */
 .textInput {
   flex: 1;
   background: var(--bg-input);
@@ -129,50 +101,6 @@
 .textInput:focus {
   outline: none;
   border-color: var(--accent);
-}
-
-/* ── Quick model chips ── */
-.quickModels {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  margin-top: 10px;
-}
-.quickLabel {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-.quickBtn {
-  padding: 3px 10px;
-  border-radius: 20px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: 11px;
-  font-family: monospace;
-  transition: all 0.15s;
-}
-.quickBtn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.quickBtnActive {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-/* ── Current model in footer ── */
-.currentModel {
-  flex: 1;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-.currentModel strong {
-  font-family: monospace;
-  color: var(--accent);
 }
 
 /* ── Row ── */
@@ -304,6 +232,142 @@
 }
 .toggle input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
 
+/* ── モーションチェックリスト ── */
+.motionCheckList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.motionCheckItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  transition: all 0.15s;
+  user-select: none;
+}
+.motionCheckItem:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.motionCheckItem input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.motionCheckItem input:checked + span {
+  color: var(--accent);
+}
+
+/* neutral は無効化スタイル */
+.motionCheckDisabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.motionCheckDisabled:hover {
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+.motionCheckDisabled input {
+  cursor: default;
+}
+
+/* ── 理解・納得ワードチップ ── */
+.wordChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  min-height: 32px;
+}
+
+.wordChip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 10px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.wordChipRemove {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--accent);
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: opacity 0.15s, background 0.15s;
+}
+.wordChipRemove:hover {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.wordAddRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.wordInput {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  font-size: var(--font-size-sm);
+  transition: border-color 0.15s;
+}
+.wordInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.wordAddBtn {
+  padding: 6px 12px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.wordAddBtn:hover { background: #8b5cf6; }
+
+.wordResetBtn {
+  padding: 6px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.wordResetBtn:hover {
+  border-color: var(--border-hover);
+  color: var(--text-secondary);
+}
+
 /* ── Buttons ── */
 .saveBtn {
   padding: 8px 20px;
@@ -350,40 +414,6 @@
   transition: all 0.15s;
 }
 .exportBtn:hover { background: var(--accent); color: #fff; }
-
-/* ── 理解ワードタグ ── */
-.wordTags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.wordTag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 20px;
-  background: var(--accent-soft);
-  border: 1px solid var(--border);
-  color: var(--accent);
-  font-size: 12px;
-}
-.wordTagRemove {
-  background: none;
-  color: var(--text-muted);
-  font-size: 10px;
-  padding: 0 2px;
-  line-height: 1;
-  transition: color 0.15s;
-}
-.wordTagRemove:hover { color: #f87171; }
-.wordAddRow {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-top: 4px;
-}
 
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -477,4 +507,56 @@
   background: rgba(239, 68, 68, 0.12);
   border-color: rgba(239, 68, 68, 0.4);
   color: #f87171;
+}
+
+/* ── OpenAI APIキー行 ── */
+.apiKeyRow {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  align-items: center;
+}
+
+.toggleVisBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.toggleVisBtn:hover { background: var(--accent-soft); }
+
+/* ── OpenAI プリセットモデル ── */
+.presetRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.presetBtn {
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: monospace;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.presetBtn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.presetBtnAdded {
+  opacity: 0.4;
+  cursor: default;
 }

@@ -3,6 +3,7 @@ import path from 'path'
 import fs from 'fs'
 import { IPC, ChatStartPayload, ChatAbortPayload, Session, Message, AppSettings } from './types'
 import { streamChat, listModels } from './ollama'
+import { streamChatOpenAI } from './openai'
 import { initStore, createSession, appendMessage, listSessions, getSession, exportSessionCsv, deleteSession, clearAllSessions, rateMessage } from './store'
 import { loadSettings, saveSettings } from './settings'
 
@@ -60,30 +61,49 @@ app.on('window-all-closed', () => {
 ipcMain.on(IPC.CHAT_START, async (event, payload: ChatStartPayload) => {
   const { requestId, model, messages } = payload
   const settings = loadSettings()
-  const ollamaUrl = settings.ollamaUrl || 'http://localhost:11434'
 
   const controller = new AbortController()
   activeStreams.set(requestId, controller)
 
-  await streamChat(
-    ollamaUrl, model, messages,
-    {
-      onDelta: (delta) => {
-        if (!activeStreams.has(requestId)) return
-        event.sender.send(IPC.CHAT_DELTA, { requestId, delta })
-      },
-      onDone: (_full, ttft_ms) => {
-        activeStreams.delete(requestId)
-        event.sender.send(IPC.CHAT_DONE, { requestId, ttft_ms })
-      },
-      onError: (message) => {
-        activeStreams.delete(requestId)
-        event.sender.send(IPC.CHAT_ERROR, { requestId, message })
-      },
+  const callbacks = {
+    onDelta: (delta: string) => {
+      if (!activeStreams.has(requestId)) return
+      event.sender.send(IPC.CHAT_DELTA, { requestId, delta })
     },
-    controller.signal,
-    settings.streamTimeout * 1000
-  )
+    onDone: (_full: string, ttft_ms: number) => {
+      activeStreams.delete(requestId)
+      event.sender.send(IPC.CHAT_DONE, { requestId, ttft_ms })
+    },
+    onError: (message: string) => {
+      activeStreams.delete(requestId)
+      event.sender.send(IPC.CHAT_ERROR, { requestId, message })
+    },
+  }
+
+  // ── 接続モードで分岐 ──
+  if (settings.connectionMode === 'openai') {
+    const baseUrl = settings.openaiBaseUrl || 'https://api.openai.com'
+    const apiKey  = settings.openaiApiKey  || ''
+    if (!apiKey) {
+      callbacks.onError('OpenAI APIキーが設定されていません。設定画面から入力してください。')
+      return
+    }
+    await streamChatOpenAI(
+      baseUrl, apiKey, model, messages,
+      callbacks,
+      controller.signal,
+      settings.streamTimeout * 1000
+    )
+  } else {
+    // Ollama（デフォルト）
+    const ollamaUrl = settings.ollamaUrl || 'http://localhost:11434'
+    await streamChat(
+      ollamaUrl, model, messages,
+      callbacks,
+      controller.signal,
+      settings.streamTimeout * 1000
+    )
+  }
 })
 
 ipcMain.on(IPC.CHAT_ABORT, (_e, payload: ChatAbortPayload) => {
@@ -94,6 +114,10 @@ ipcMain.on(IPC.CHAT_ABORT, (_e, payload: ChatAbortPayload) => {
 // ─── IPC: Models ──────────────────────────────────────────────────────────────
 ipcMain.handle(IPC.MODELS_LIST, async () => {
   const settings = loadSettings()
+  // OpenAIモードのときは登録済みモデル一覧を返す（API呼び出し不要）
+  if (settings.connectionMode === 'openai') {
+    return settings.openaiModels ?? []
+  }
   const url = settings.ollamaUrl || 'http://localhost:11434'
   return listModels(url)
 })
@@ -135,19 +159,13 @@ ipcMain.handle(IPC.AVATAR_DEFAULT_PATH, () => {
   const p = app.isPackaged
     ? path.join(process.resourcesPath, 'assets', 'avatar', 'default-static')
     : path.join(app.getAppPath(), 'assets', 'avatar', 'default-static')
-  console.log('[main] avatar:defaultPath requested:', p, 'exists:', fs.existsSync(p))
   return fs.existsSync(p) ? p : null
 })
 
 ipcMain.handle(IPC.AVATAR_READ_FILE, (_e, filePath: string) => {
   try {
-    const ext = path.extname(filePath).toLowerCase()
-    const mime = ext === '.gif'  ? 'image/gif'
-               : ext === '.webp' ? 'image/webp'
-               : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
-               : 'image/png'
     const data = fs.readFileSync(filePath)
-    return `data:${mime};base64,${data.toString('base64')}`
+    return `data:image/png;base64,${data.toString('base64')}`
   } catch (e) {
     console.warn('[main] avatar:readFile failed:', filePath, e)
     return null
