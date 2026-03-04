@@ -1,4 +1,4 @@
-# 学習アシスタント Hotori
+# 学習アシスタントツール兼マルチ教師蒸留ツール Hotori
 
 Electron + React + Vite + TypeScript + Ollama による学習支援デスクトップアプリ
 
