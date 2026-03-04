@@ -61,10 +61,9 @@ npm run dist:win
 ## アバター設定
 
 設定画面からアバターフォルダを指定できます。  
-フォルダ構成は `assets/avatar/default-static/manifest.json` を参考にしてください。
+フォルダ構成は `assets/avatar/default-static/` を参考にしてください。
 
 ```
-  manifest.json
   neutral.png
   think.png
   explain.png
