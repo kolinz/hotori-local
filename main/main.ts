@@ -4,6 +4,7 @@ import fs from 'fs'
 import { IPC, ChatStartPayload, ChatAbortPayload, Session, Message, AppSettings } from './types'
 import { streamChat, listModels } from './ollama'
 import { streamChatOpenAI } from './openai'
+import { streamDifyChat } from './dify'
 import { initStore, createSession, appendMessage, listSessions, getSession, exportSessionCsv, deleteSession, clearAllSessions, rateMessage } from './store'
 import { loadSettings, saveSettings } from './settings'
 
@@ -38,7 +39,6 @@ app.whenReady().then(async () => {
     console.error('[main] initStore failed:', err)
   }
 
-  // デフォルトアバターパスを設定
   try {
     const settings = loadSettings()
     const defaultAvatarPath = app.isPackaged
@@ -59,7 +59,7 @@ app.on('window-all-closed', () => {
 
 // ─── IPC: Chat ────────────────────────────────────────────────────────────────
 ipcMain.on(IPC.CHAT_START, async (event, payload: ChatStartPayload) => {
-  const { requestId, model, messages } = payload
+  const { requestId, model, messages, userQuery } = payload
   const settings = loadSettings()
 
   const controller = new AbortController()
@@ -80,7 +80,7 @@ ipcMain.on(IPC.CHAT_START, async (event, payload: ChatStartPayload) => {
     },
   }
 
-  // ── 接続モードで分岐 ──
+  // ── 接続モードで分岐 ──────────────────────────────────────────────────────
   if (settings.connectionMode === 'openai') {
     const baseUrl = settings.openaiBaseUrl || 'https://api.openai.com'
     const apiKey  = settings.openaiApiKey  || ''
@@ -90,6 +90,21 @@ ipcMain.on(IPC.CHAT_START, async (event, payload: ChatStartPayload) => {
     }
     await streamChatOpenAI(
       baseUrl, apiKey, model, messages,
+      callbacks,
+      controller.signal,
+      settings.streamTimeout * 1000
+    )
+  } else if (settings.connectionMode === 'dify') {
+    const difyUrl = settings.difyUrl || 'https://api.dify.ai/v1'
+    const apiKey  = settings.difyApiKey || ''
+    if (!apiKey) {
+      callbacks.onError('Dify APIキーが設定されていません。設定画面から入力してください。')
+      return
+    }
+    // Dify には userQuery（最後のユーザーメッセージ）だけを渡す
+    const query = userQuery ?? messages.filter(m => m.role === 'user').at(-1)?.content ?? ''
+    await streamDifyChat(
+      difyUrl, apiKey, query,
       callbacks,
       controller.signal,
       settings.streamTimeout * 1000
@@ -114,12 +129,16 @@ ipcMain.on(IPC.CHAT_ABORT, (_e, payload: ChatAbortPayload) => {
 // ─── IPC: Models ──────────────────────────────────────────────────────────────
 ipcMain.handle(IPC.MODELS_LIST, async () => {
   const settings = loadSettings()
-  // OpenAIモードのときは登録済みモデル一覧を返す（API呼び出し不要）
   if (settings.connectionMode === 'openai') {
+    // OpenAIモードは登録済みモデル一覧を返す（API呼び出し不要）
     return settings.openaiModels ?? []
   }
-  const url = settings.ollamaUrl || 'http://localhost:11434'
-  return listModels(url)
+  if (settings.connectionMode === 'dify') {
+    // Difyモードはモデル選択不要（空配列）
+    return []
+  }
+  const ollamaUrl = settings.ollamaUrl || 'http://localhost:11434'
+  return listModels(ollamaUrl)
 })
 
 // ─── IPC: Logs ────────────────────────────────────────────────────────────────

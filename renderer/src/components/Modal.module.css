@@ -138,6 +138,7 @@
   text-align: right;
 }
 
+/* ── Avatar picker ── */
 .avatarPicker {
   display: flex;
   flex: 1;
@@ -200,6 +201,7 @@
   margin-top: 4px;
 }
 
+/* ── Distance / Theme grid ── */
 .distanceGrid, .themeGrid {
   display: flex;
   flex-wrap: wrap;
@@ -222,6 +224,7 @@
   color: var(--accent);
 }
 
+/* ── Toggle (checkbox) ── */
 .toggle {
   display: flex;
   align-items: center;
@@ -232,18 +235,15 @@
 }
 .toggle input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
 
-/* ── モーションチェックリスト ── */
-.motionCheckList {
+/* ── Motion grid ── */
+.motionGrid {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 8px;
 }
 
-.motionCheckItem {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.motionBtn {
   padding: 5px 12px;
   background: var(--bg-input);
   border: 1px solid var(--border);
@@ -254,30 +254,17 @@
   transition: all 0.15s;
   user-select: none;
 }
-.motionCheckItem:hover {
+.motionBtn:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
 }
-.motionCheckItem input {
-  width: 14px;
-  height: 14px;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-.motionCheckItem input:checked + span {
+.motionBtnOn {
+  background: var(--accent-soft);
+  border-color: var(--accent);
   color: var(--accent);
 }
-
-/* neutral は無効化スタイル */
-.motionCheckDisabled {
+.motionBtnLocked {
   opacity: 0.55;
-  cursor: default;
-}
-.motionCheckDisabled:hover {
-  border-color: var(--border);
-  color: var(--text-secondary);
-}
-.motionCheckDisabled input {
   cursor: default;
 }
 
@@ -368,148 +355,7 @@
   color: var(--text-secondary);
 }
 
-/* ── Buttons ── */
-.saveBtn {
-  padding: 8px 20px;
-  background: var(--accent);
-  color: #fff;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  transition: all 0.15s;
-}
-.saveBtn:hover { background: #8b5cf6; transform: translateY(-1px); }
-
-.cancelBtn {
-  padding: 8px 20px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  transition: all 0.15s;
-}
-.cancelBtn:hover { border-color: var(--border-hover); }
-
-/* ── Session list ── */
-.sessionList { display: flex; flex-direction: column; gap: 8px; }
-.sessionItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-}
-.sessionTitle { font-size: var(--font-size-sm); color: var(--text-primary); }
-.sessionMeta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-.exportBtn {
-  padding: 4px 12px;
-  background: var(--accent-soft);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--accent);
-  font-size: 11px;
-  transition: all 0.15s;
-}
-.exportBtn:hover { background: var(--accent); color: #fff; }
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ── Sessions ── */
-.sessionInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-.sessionActions {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-  align-items: center;
-}
-
-.deleteBtn {
-  padding: 5px 10px;
-  border-radius: var(--radius-sm);
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #f87171;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.deleteBtn:hover { background: rgba(239, 68, 68, 0.25); }
-.deleteBtn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.clearBtn2 {
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  color: #f87171;
-  font-size: 13px;
-  cursor: pointer;
-  margin-right: auto;
-  transition: all 0.15s;
-}
-.clearBtn2:hover { background: rgba(239, 68, 68, 0.2); }
-
-.dangerBtn {
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
-  background: #dc2626;
-  color: white;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.dangerBtn:hover { background: #b91c1c; }
-
-.confirmRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-}
-
-.confirmText {
-  flex: 1;
-  font-size: 13px;
-  color: #f87171;
-}
-
-.feedback {
-  margin-bottom: 12px;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--accent-soft);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  font-size: 12px;
-}
-.feedbackOk {
-  background: rgba(34, 197, 94, 0.12);
-  border-color: rgba(34, 197, 94, 0.4);
-  color: #4ade80;
-}
-.feedbackErr {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #f87171;
-}
-
-/* ── OpenAI APIキー行 ── */
+/* ── APIキー行（OpenAI / Dify 共用） ── */
 .apiKeyRow {
   display: flex;
   flex: 1;
@@ -559,4 +405,125 @@
 .presetBtnAdded {
   opacity: 0.4;
   cursor: default;
+}
+
+/* ── Buttons ── */
+.saveBtn {
+  padding: 8px 20px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all 0.15s;
+}
+.saveBtn:hover { background: #8b5cf6; transform: translateY(-1px); }
+
+.cancelBtn {
+  padding: 8px 20px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  transition: all 0.15s;
+}
+.cancelBtn:hover { border-color: var(--border-hover); }
+
+/* ── Session list ── */
+.sessionList { display: flex; flex-direction: column; gap: 8px; }
+.sessionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.sessionTitle { font-size: var(--font-size-sm); color: var(--text-primary); }
+.sessionMeta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.sessionInfo { flex: 1; min-width: 0; }
+.sessionActions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+
+.exportBtn {
+  padding: 4px 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: 11px;
+  transition: all 0.15s;
+}
+.exportBtn:hover { background: var(--accent); color: #fff; }
+
+.deleteBtn {
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.deleteBtn:hover { background: rgba(239, 68, 68, 0.25); }
+.deleteBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.clearBtn2 {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+  font-size: 13px;
+  cursor: pointer;
+  margin-right: auto;
+  transition: all 0.15s;
+}
+.clearBtn2:hover { background: rgba(239, 68, 68, 0.2); }
+
+.dangerBtn {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  background: #dc2626;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.dangerBtn:hover { background: #b91c1c; }
+
+.confirmRow { display: flex; align-items: center; gap: 10px; width: 100%; }
+.confirmText { flex: 1; font-size: 13px; color: #f87171; }
+
+.feedback {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 12px;
+}
+.feedbackOk {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+}
+.feedbackErr {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

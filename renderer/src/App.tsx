@@ -92,22 +92,25 @@ export default function App() {
   }, [])
 
   // ── モデル一覧取得 ──
-  // OpenAIモード: settings から登録モデルを使う（API不要）
-  // Ollamaモード: Ollama から動的取得
+  // Ollama : 動的取得
+  // OpenAI : settings から登録モデルを使う（API不要）
+  // Dify   : モデル選択不要（空配列）
   useEffect(() => {
     if (!settings) return
     if (settings.connectionMode === 'openai') {
       const openaiModels = settings.openaiModels ?? []
       setModels(openaiModels)
-      // OpenAIモードはAPIキーがあれば「オンライン」扱い
       setOllamaOnline(openaiModels.length > 0 ? true : null)
+    } else if (settings.connectionMode === 'dify') {
+      setModels([])
+      setOllamaOnline(!!settings.difyApiKey ? true : null)
     } else {
       api.listModels().then(m => {
         setModels(m)
         setOllamaOnline(m.length > 0)
       })
     }
-  }, [settings?.connectionMode, settings?.openaiModels, settings?.ollamaUrl])
+  }, [settings?.connectionMode, settings?.openaiModels, settings?.ollamaUrl, settings?.difyApiKey])
 
   // ── 背景画像 ──
   useEffect(() => {
@@ -123,6 +126,9 @@ export default function App() {
     if (next.connectionMode === 'openai') {
       setModels(next.openaiModels ?? [])
       setOllamaOnline((next.openaiModels ?? []).length > 0 ? true : null)
+    } else if (next.connectionMode === 'dify') {
+      setModels([])
+      setOllamaOnline(!!next.difyApiKey ? true : null)
     } else {
       api.listModels().then(m => { setModels(m); setOllamaOnline(m.length > 0) })
     }
@@ -167,13 +173,15 @@ export default function App() {
 
   if (!settings) return null
 
-  // OpenAIモードでモデル未登録の場合はガイド表示
+  // 接続未設定・オフライン時はガイド表示
   const isOffline = settings.connectionMode === 'openai'
     ? (settings.openaiModels ?? []).length === 0 || !settings.openaiApiKey
-    : ollamaOnline === false
+    : settings.connectionMode === 'dify'
+      ? !settings.difyApiKey
+      : ollamaOnline === false
 
-  // モードに合わせて defaultModel を解決して Chat に渡す
-  // OpenAI モードのとき qwen3:0.6b などの Ollama 用モデル名が送られるのを防ぐ
+  // OpenAI モードのとき Ollama 用モデル名が Chat に渡されるのを防ぐ
+  // Dify モードは Chat 内で model:'' を渡すため差し替え不要
   const resolvedSettings = settings.connectionMode === 'openai'
     ? { ...settings, defaultModel: (settings.openaiModels ?? [])[0] ?? settings.defaultModel }
     : settings
