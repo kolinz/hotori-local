@@ -1,7 +1,7 @@
 {
   "name": "learning-assistant",
   "version": "0.2.0",
-  "description": "AI-powered learning assistant with Ollama, OpenAI, and Dify",
+  "description": "AI-powered Learning assistant and RAG-to-SFT pipeline tool. Supports Ollama, OpenAI, and Dify.",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k \"npm run dev:vite\" \"npm run dev:electron\"",
