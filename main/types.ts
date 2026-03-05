@@ -32,10 +32,10 @@ export type Rating = 'good' | 'bad' | null
 /**
  * 接続モード
  * 'ollama': ローカルLLM（Ollama）
- * 'openai': OpenAI API（ChatGPT）
- * 将来: | 'dify' など
+ * 'openai': OpenAI API / OpenAI互換API
+ * 'dify':   Dify API（Chatbot・Agent、RAG対応）
  */
-export type ConnectionMode = 'ollama' | 'openai'
+export type ConnectionMode = 'ollama' | 'openai' | 'dify'
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
@@ -47,6 +47,8 @@ export interface ChatStartPayload {
   model: string
   distance: Distance
   messages: ChatMessage[]
+  /** Dify モード時のみ使用: ユーザーが入力したテキスト */
+  userQuery?: string
 }
 
 export interface ChatAbortPayload {
@@ -103,10 +105,13 @@ export interface AppSettings {
   connectionMode: ConnectionMode
   // Ollama
   ollamaUrl: string
-  // OpenAI
-  openaiApiKey: string           // APIキー（平文・個人PC用途）
-  openaiModels: string[]         // ユーザーが登録したモデル一覧
-  openaiBaseUrl: string          // カスタムエンドポイント（デフォルト: OpenAI公式）
+  // OpenAI / OpenAI互換
+  openaiApiKey: string
+  openaiModels: string[]
+  openaiBaseUrl: string
+  // Dify
+  difyUrl: string
+  difyApiKey: string
 
   avatarPath: string
   backgroundImagePath: string
@@ -145,12 +150,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
   openaiApiKey: '',
   openaiModels: ['gpt-5-nano-2025-08-07', 'gpt-4.1-nano-2025-04-14'],
   openaiBaseUrl: 'https://api.openai.com',
+  difyUrl: 'https://api.dify.ai/v1',
+  difyApiKey: '',
   avatarPath: '',
   backgroundImagePath: '',
   theme: 'auto',
   distance: 'tutor',
   reducedMotion: false,
-  defaultModel: 'qwen3:0.6b',
+  defaultModel: 'gemma3:1b',
   streamTimeout: 60,
   toneTagEnabled: true,
   enabledMotions: [...ALL_MOTIONS],
