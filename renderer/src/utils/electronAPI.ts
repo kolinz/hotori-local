@@ -1,11 +1,14 @@
 import type { AppSettings, Session, Message } from '../../../../main/types'
 export type { AppSettings, Session, Message }
 
+export interface ChatDeltaPayload { requestId: string; delta: string }
+export interface ChatDonePayload  { requestId: string; ttft_ms: number }
+
 export interface ElectronAPI {
   chatStart: (payload: import('../../../../main/types').ChatStartPayload) => void
   chatAbort: (payload: import('../../../../main/types').ChatAbortPayload) => void
-  onChatDelta: (cb: (p: import('../../../../main/types').ChatDeltaPayload) => void) => () => void
-  onChatDone: (cb: (p: import('../../../../main/types').ChatDonePayload) => void) => () => void
+  onChatDelta: (cb: (p: ChatDeltaPayload) => void) => () => void
+  onChatDone: (cb: (p: ChatDonePayload) => void) => () => void
   onChatError: (cb: (p: { requestId: string; message: string }) => void) => () => void
   listModels: () => Promise<string[]>
   createSession: (s: Session) => Promise<void>
@@ -46,10 +49,15 @@ const fallback: ElectronAPI = {
   clearAllSessions: async () => {},
   rateMessage: async () => {},
   getSettings: async () => ({
-    avatarPath: '', backgroundImagePath: '', ollamaUrl: 'http://localhost:11434',
+    connectionMode: 'ollama',
+    ollamaUrl: 'http://localhost:11434',
+    openaiApiKey: '', openaiModels: [], openaiBaseUrl: 'https://api.openai.com',
+    difyUrl: 'https://api.dify.ai/v1', difyApiKey: '',
+    avatarPath: '', backgroundImagePath: '',
     theme: 'auto', distance: 'tutor', reducedMotion: false,
-    defaultModel: 'qwen3:0.6b', streamTimeout: 60,
-    understandingWords: ['なるほど', 'わかりました', '了解', '理解しました', 'わかった', 'ok', 'okay', 'そうか', 'なるほどね', 'そうですか', 'そうなんですね'],
+    defaultModel: 'gemma3:1b', streamTimeout: 60,
+    toneTagEnabled: true, enabledMotions: ['neutral','think','explain','praise','ask'],
+    understandingWordsEnabled: true, understandingWords: [],
   }),
   setSettings: async () => {},
   loadAvatarManifest: async () => null,
