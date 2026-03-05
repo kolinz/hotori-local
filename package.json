@@ -1,7 +1,7 @@
 {
   "name": "learning-assistant",
   "version": "0.2.0",
-  "description": "AI-powered learning assistant with Ollama",
+  "description": "AI-powered learning assistant with Ollama, OpenAI, and Dify",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k \"npm run dev:vite\" \"npm run dev:electron\"",
