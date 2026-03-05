@@ -49,6 +49,14 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
   const [sessionId]                       = useState(genId)
   const [sessionCreated, setSessionCreated] = useState(false)
 
+  // settings.defaultModel が変わったら（接続モード切り替え時など）selectedModel を追従
+  // ただし既にセッションが開始済みの場合は変えない
+  useEffect(() => {
+    if (!sessionCreated) {
+      setSelectedModel(settings.defaultModel)
+    }
+  }, [settings.defaultModel]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const currentRequestId   = useRef<string | null>(null)
   const accumulatedContent = useRef<string>('')
   const assistantMsgId     = useRef<string>('')
@@ -59,6 +67,15 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
   const toneTagEnabled            = settings.toneTagEnabled ?? true
   const enabledMotions            = settings.enabledMotions ?? undefined
   const understandingWordsEnabled = settings.understandingWordsEnabled ?? true
+
+  /** 接続モード判定 */
+  const isDify = settings.connectionMode === 'dify'
+
+  /** モデル表示名（CSVに記録するもの） */
+  const resolveModelName = (): string => {
+    if (isDify) return 'Dify'
+    return selectedModel
+  }
 
   const resolveTone = useCallback((text: string): { tone: MotionName; clean: string } => {
     if (!toneTagEnabled) {
@@ -111,7 +128,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
         id: assistantMsgId.current,
         session_id: sessionId, role: 'assistant',
         content: fullContent, content_clean: clean,
-        tone, model: selectedModel,
+        tone, model: resolveModelName(),
         latency_ms: 0, ttft_ms: p.ttft_ms,
         tokens_in: 0, tokens_out: 0, safety_flags: '', error: '',
         created_at: new Date().toISOString(),
@@ -131,7 +148,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     })
 
     return () => { unsubDelta(); unsubDone(); unsubError() }
-  }, [sessionId, selectedModel, onMotionChange, triggerPostResponseMotion, resolveTone])
+  }, [sessionId, selectedModel, isDify, onMotionChange, triggerPostResponseMotion, resolveTone])
 
   const ensureSession = useCallback(async () => {
     if (sessionCreated) return
@@ -140,12 +157,12 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
       title: makeSessionTitle(),
       started_at: new Date().toISOString(),
       distance: settings.distance,
-      model: selectedModel,
+      model: resolveModelName(),
     }
     await api.createSession(session)
     setSessionCreated(true)
     onSessionTitleChange(tabId, session.title)
-  }, [sessionCreated, sessionId, settings.distance, selectedModel])
+  }, [sessionCreated, sessionId, settings.distance, selectedModel, isDify])
 
   const send = useCallback(async () => {
     const text = input.trim()
@@ -154,7 +171,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
 
     if (motionTimerRef.current) { clearTimeout(motionTimerRef.current); motionTimerRef.current = null }
 
-    // 理解・納得ワード検知: 機能がオンのときのみ
+    // 理解・納得ワード検知（Difyモードでも動作）
     const understandingRegex = understandingWordsEnabled
       ? buildUnderstandingRegex(settings.understandingWords ?? [])
       : /(?!)/
@@ -166,7 +183,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
       await api.appendMessage({
         id: userMsg.id, session_id: sessionId, role: 'user',
         content: text, content_clean: text, tone: 'neutral',
-        model: selectedModel, latency_ms: 0, ttft_ms: 0,
+        model: resolveModelName(), latency_ms: 0, ttft_ms: 0,
         tokens_in: 0, tokens_out: 0, safety_flags: '', error: '',
         created_at: new Date().toISOString(),
       } as Message)
@@ -193,22 +210,34 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     await api.appendMessage({
       id: userMsg.id, session_id: sessionId, role: 'user',
       content: text, content_clean: text, tone: 'neutral',
-      model: selectedModel, latency_ms: 0, ttft_ms: 0,
+      model: resolveModelName(), latency_ms: 0, ttft_ms: 0,
       tokens_in: 0, tokens_out: 0, safety_flags: '', error: '',
       created_at: new Date().toISOString(),
     } as Message)
 
-    const systemPrompt = buildSystemPrompt(settings.distance, toneTagEnabled)
-    const history = messages.map(m => ({ role: m.role, content: m.content }))
     const requestId = genId()
     currentRequestId.current = requestId
     accumulatedContent.current = ''
 
-    api.chatStart({
-      requestId, model: selectedModel, distance: settings.distance,
-      messages: [{ role: 'system', content: systemPrompt }, ...history, { role: 'user', content: text }],
-    })
-  }, [input, isStreaming, ensureSession, messages, onMotionChange, onPraiseReaction, selectedModel, sessionId, settings.distance, settings.understandingWords, toneTagEnabled, understandingWordsEnabled])
+    if (isDify) {
+      // Dify モード: userQuery のみ渡す（履歴・システムプロンプトはDify側で管理）
+      api.chatStart({
+        requestId,
+        model: '',
+        distance: settings.distance,
+        messages: [],
+        userQuery: text,
+      })
+    } else {
+      // Ollama / OpenAI モード: システムプロンプト + 全履歴を渡す
+      const systemPrompt = buildSystemPrompt(settings.distance, toneTagEnabled)
+      const history = messages.map(m => ({ role: m.role, content: m.content }))
+      api.chatStart({
+        requestId, model: selectedModel, distance: settings.distance,
+        messages: [{ role: 'system', content: systemPrompt }, ...history, { role: 'user', content: text }],
+      })
+    }
+  }, [input, isStreaming, ensureSession, messages, onMotionChange, onPraiseReaction, selectedModel, sessionId, settings.distance, settings.understandingWords, toneTagEnabled, understandingWordsEnabled, isDify])
 
   const abort = useCallback(() => {
     if (!currentRequestId.current) return
@@ -242,16 +271,28 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
 
-  const showAvatarMsg = !!avatarMessage && !isStreaming
+  const showAvatarMsg = !isStreaming && avatarMessage && messages.length === 0
 
   return (
     <div className={styles.chat}>
       <div className={styles.modelBar}>
-        {models.length > 1 && (
-          <select className={styles.modelSelect} value={selectedModel}
-            onChange={e => setSelectedModel(e.target.value)} disabled={isStreaming}>
+        {/* Difyモード: バッジ表示（モデル選択不要） */}
+        {isDify && (
+          <span className={styles.difyBadge}>⚡ Dify</span>
+        )}
+        {/* Ollama / OpenAI モード: モデルセレクタ */}
+        {!isDify && models.length > 1 && (
+          <select
+            className={styles.modelSelect}
+            value={selectedModel}
+            onChange={e => setSelectedModel(e.target.value)}
+            disabled={isStreaming}
+          >
             {models.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
+        )}
+        {!isDify && models.length === 1 && (
+          <span className={styles.modelLabel}>{models[0]}</span>
         )}
         {messages.length > 0 && !isStreaming && (
           <button className={styles.clearBtn} onClick={clearChat} title="チャットをクリア">
@@ -264,7 +305,9 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
         {messages.length === 0 && !avatarMessage && (
           <div className={styles.welcome}>
             <p>何でも話しかけてください 👋</p>
-            <p className={styles.welcomeSub}>学習のお悩み、一緒に考えましょう。</p>
+            <p className={styles.welcomeSub}>
+              {isDify ? '⚡ Dify に接続中' : '学習のお悩み、一緒に考えましょう。'}
+            </p>
           </div>
         )}
         {messages.map(msg => (
@@ -316,9 +359,9 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
           rows={1}
         />
         {isStreaming ? (
-          <button className={`${styles.sendBtn} ${styles.abortBtn}`} onClick={abort}>■ 停止</button>
+          <button className={`${styles.send} ${styles.abort}`} onClick={abort}>■ 停止</button>
         ) : (
-          <button className={styles.sendBtn} onClick={send} disabled={!input.trim()}>
+          <button className={styles.send} onClick={send} disabled={!input.trim()}>
             送信 ↵
           </button>
         )}

@@ -27,16 +27,22 @@ const MOTION_LABELS: Record<MotionName, string> = {
 }
 
 const CONNECTION_MODES: { value: ConnectionMode; label: string; desc: string }[] = [
-  { value: 'ollama', label: 'Ollama', desc: 'ローカルLLM' },
-  { value: 'openai', label: 'OpenAI', desc: 'ChatGPT API' },
-  // 将来: { value: 'dify', label: 'Dify', desc: 'Dify API連携' },
+  { value: 'ollama', label: '🦙 Ollama', desc: 'ローカルLLM（オフライン動作）' },
+  { value: 'openai', label: '🤖 OpenAI', desc: 'ChatGPT API / OpenAI互換API' },
+  { value: 'dify',   label: '⚡ Dify',   desc: 'Dify API（RAG・Agent対応）' },
 ]
 
 export function SettingsModal({ settings, onSave, onClose }: Props) {
-  const [draft, setDraft]         = useState<AppSettings>({ ...settings })
-  const [newWord, setNewWord]     = useState('')
-  const [newModel, setNewModel]   = useState('')
-  const [showApiKey, setShowApiKey] = useState(false)
+  const [draft, setDraft]             = useState<AppSettings>({
+    // 既存設定にdify関連のデフォルト値をマージ（後方互換）
+    difyUrl: 'https://api.dify.ai/v1',
+    difyApiKey: '',
+    ...settings,
+  })
+  const [newWord, setNewWord]         = useState('')
+  const [newModel, setNewModel]       = useState('')
+  const [showApiKey, setShowApiKey]   = useState(false)
+  const [showDifyKey, setShowDifyKey] = useState(false)
 
   // ── 理解・納得ワード ──
   const handleAddWord = () => {
@@ -95,9 +101,11 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
 
   const handleSave = () => { onSave({ ...draft }) }
 
-  const enabledMotions  = draft.enabledMotions ?? [...ALL_MOTIONS]
-  const openaiModels    = draft.openaiModels ?? []
-  const isOpenAI        = draft.connectionMode === 'openai'
+  const enabledMotions = draft.enabledMotions ?? [...ALL_MOTIONS]
+  const openaiModels   = draft.openaiModels ?? []
+  const isOllama       = draft.connectionMode === 'ollama' || !draft.connectionMode
+  const isOpenAI       = draft.connectionMode === 'openai'
+  const isDify         = draft.connectionMode === 'dify'
 
   return (
     <div className={styles.overlay} onClick={onClose}>
@@ -129,7 +137,7 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
             </div>
 
             {/* Ollama 設定 */}
-            {!isOpenAI && (
+            {isOllama && (
               <>
                 <div className={styles.row}>
                   <span className={styles.label}>Ollama URL</span>
@@ -188,7 +196,6 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 {/* モデル管理 */}
                 <div className={styles.label} style={{ marginBottom: 8, marginTop: 12 }}>使用するモデル</div>
 
-                {/* 登録済みモデル */}
                 <div className={styles.wordChips} style={{ marginBottom: 8 }}>
                   {openaiModels.length === 0 && (
                     <span className={styles.hint}>モデルが登録されていません</span>
@@ -205,7 +212,6 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                   ))}
                 </div>
 
-                {/* プリセット */}
                 <div className={styles.presetRow}>
                   <span className={styles.hint} style={{ marginRight: 8 }}>プリセット:</span>
                   {OPENAI_PRESET_MODELS.map(m => (
@@ -214,25 +220,68 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                       className={`${styles.presetBtn} ${openaiModels.includes(m) ? styles.presetBtnAdded : ''}`}
                       onClick={() => handleAddPresetModel(m)}
                       disabled={openaiModels.includes(m)}
-                      title={openaiModels.includes(m) ? '追加済み' : '追加'}
+                      title={openaiModels.includes(m) ? '追加済み' : m}
                     >
                       {m}
                     </button>
                   ))}
                 </div>
 
-                {/* 手動追加 */}
-                <div className={styles.wordAddRow} style={{ marginTop: 8 }}>
+                <div className={styles.wordAddRow}>
                   <input
                     className={styles.wordInput}
                     type="text"
-                    placeholder="モデル名を入力（例: gpt-4-turbo）"
+                    placeholder="モデル名を追加（例: gpt-4o）"
                     value={newModel}
                     onChange={e => setNewModel(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddModel() } }}
+                    spellCheck={false}
                   />
                   <button className={styles.wordAddBtn} onClick={handleAddModel}>追加</button>
                 </div>
+              </>
+            )}
+
+            {/* Dify 設定 */}
+            {isDify && (
+              <>
+                <div className={styles.row}>
+                  <span className={styles.label}>エンドポイント URL</span>
+                  <input
+                    className={styles.textInput}
+                    type="text"
+                    placeholder="https://api.dify.ai/v1"
+                    value={draft.difyUrl ?? ''}
+                    onChange={e => setDraft(d => ({ ...d, difyUrl: e.target.value }))}
+                    spellCheck={false}
+                  />
+                </div>
+                <div className={styles.row}>
+                  <span className={styles.label}>API キー</span>
+                  <div className={styles.apiKeyRow}>
+                    <input
+                      className={styles.textInput}
+                      type={showDifyKey ? 'text' : 'password'}
+                      placeholder="app-xxxxxxxxxxxxxxxxxxxx"
+                      value={draft.difyApiKey ?? ''}
+                      onChange={e => setDraft(d => ({ ...d, difyApiKey: e.target.value }))}
+                      spellCheck={false}
+                      autoComplete="off"
+                    />
+                    <button
+                      className={styles.toggleVisBtn}
+                      onClick={() => setShowDifyKey(v => !v)}
+                      title={showDifyKey ? '隠す' : '表示'}
+                    >
+                      {showDifyKey ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                </div>
+                <p className={styles.hint}>
+                  Dify アプリの「API アクセス」からAPIキーを取得してください。
+                  Chatbot・Agent どちらのアプリタイプにも対応しています。
+                  セルフホスト環境では localhost URL も使用できます。
+                </p>
               </>
             )}
           </Section>
@@ -245,49 +294,25 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 <input
                   className={styles.pathInput}
                   value={draft.avatarPath || '（未設定）'}
-                  readOnly title={draft.avatarPath}
+                  readOnly
+                  title={draft.avatarPath}
                 />
-                <button className={styles.pickBtn} onClick={handleAvatarPick}>📁 選択</button>
+                <button className={styles.pickBtn} onClick={handleAvatarPick}>
+                  📁 選択
+                </button>
                 {draft.avatarPath && (
-                  <button className={styles.clearBtn} onClick={() => setDraft(d => ({ ...d, avatarPath: '' }))}>✕</button>
+                  <button className={styles.clearBtn} onClick={() => setDraft(d => ({ ...d, avatarPath: '' }))}>
+                    ✕
+                  </button>
                 )}
               </div>
             </div>
-            {draft.avatarPath && <p className={styles.pathDebug}>📂 {draft.avatarPath}</p>}
-            <p className={styles.hint}>フォルダに neutral / think / explain / praise / ask .png を配置してください。</p>
-          </Section>
-
-          {/* ── アバター動作 ── */}
-          <Section title="🎬 アバター動作">
-            <label className={styles.toggle}>
-              <input
-                type="checkbox"
-                checked={draft.toneTagEnabled ?? true}
-                onChange={e => setDraft(d => ({ ...d, toneTagEnabled: e.target.checked }))}
-              />
-              <span>toneTag連携（AIの応答に応じてモーションを切り替える）</span>
-            </label>
-            <p className={styles.hint} style={{ marginTop: 6, marginBottom: 14 }}>
-              オフにすると、アバターはモーションを変化させず neutral のまま維持します。
+            {draft.avatarPath && (
+              <p className={styles.pathDebug}>📂 {draft.avatarPath}</p>
+            )}
+            <p className={styles.hint}>
+              フォルダに neutral / think / explain / praise / ask .png を配置してください。
             </p>
-            <div className={styles.label} style={{ marginBottom: 8 }}>使用するモーション</div>
-            <div className={styles.motionCheckList}>
-              {ALL_MOTIONS.map(m => {
-                const isNeutral = m === 'neutral'
-                const checked = enabledMotions.includes(m)
-                return (
-                  <label
-                    key={m}
-                    className={`${styles.motionCheckItem} ${isNeutral ? styles.motionCheckDisabled : ''}`}
-                    title={isNeutral ? 'neutral は常に有効です（フォールバック）' : ''}
-                  >
-                    <input type="checkbox" checked={checked} disabled={isNeutral} onChange={() => toggleMotion(m)} />
-                    <span>{MOTION_LABELS[m]}</span>
-                  </label>
-                )
-              })}
-            </div>
-            <p className={styles.hint}>オフにしたモーションが指定された場合、neutral にフォールバックします。</p>
           </Section>
 
           {/* ── 背景画像 ── */}
@@ -298,20 +323,56 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 <input
                   className={styles.pathInput}
                   value={draft.backgroundImagePath || '（未設定）'}
-                  readOnly title={draft.backgroundImagePath}
+                  readOnly
+                  title={draft.backgroundImagePath}
                 />
-                <button className={styles.pickBtn} onClick={handleBgPick}>📁 選択</button>
+                <button className={styles.pickBtn} onClick={handleBgPick}>
+                  📁 選択
+                </button>
                 {draft.backgroundImagePath && (
-                  <button className={styles.clearBtn} onClick={() => setDraft(d => ({ ...d, backgroundImagePath: '' }))}>✕</button>
+                  <button className={styles.clearBtn} onClick={() => setDraft(d => ({ ...d, backgroundImagePath: '' }))}>
+                    ✕
+                  </button>
                 )}
               </div>
             </div>
-            {draft.backgroundImagePath && <p className={styles.pathDebug}>📂 {draft.backgroundImagePath}</p>}
+            {draft.backgroundImagePath && (
+              <p className={styles.pathDebug}>📂 {draft.backgroundImagePath}</p>
+            )}
             <p className={styles.hint}>PNG / JPG / WebP / GIF に対応。チャット画面の背景に表示されます。</p>
           </Section>
 
+          {/* ── アバター動作 ── */}
+          <Section title="🎬 アバター動作">
+            <label className={styles.toggle}>
+              <input
+                type="checkbox"
+                checked={draft.toneTagEnabled ?? true}
+                onChange={e => setDraft(d => ({ ...d, toneTagEnabled: e.target.checked }))}
+              />
+              <span>toneTag → アバターモーション連携を有効にする</span>
+            </label>
+            <p className={styles.hint} style={{ marginTop: 6, marginBottom: 14 }}>
+              オンにすると、LLMの返答に含まれる [tone:xxx] タグでアバターのモーションが変わります。
+            </p>
+            <div className={styles.label} style={{ marginBottom: 8 }}>使用するモーション</div>
+            <div className={styles.motionGrid}>
+              {ALL_MOTIONS.map(m => (
+                <button
+                  key={m}
+                  className={`${styles.motionBtn} ${enabledMotions.includes(m) ? styles.motionBtnOn : ''} ${m === 'neutral' ? styles.motionBtnLocked : ''}`}
+                  onClick={() => toggleMotion(m)}
+                  disabled={m === 'neutral'}
+                  title={m === 'neutral' ? '常時有効（変更不可）' : enabledMotions.includes(m) ? '無効にする' : '有効にする'}
+                >
+                  {MOTION_LABELS[m]}
+                </button>
+              ))}
+            </div>
+          </Section>
+
           {/* ── 理解・納得ワード ── */}
-          <Section title="🧠 理解・納得ワード">
+          <Section title="💡 理解・納得ワード">
             <label className={styles.toggle}>
               <input
                 type="checkbox"
@@ -397,7 +458,8 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 type="number"
                 className={styles.numInput}
                 value={draft.streamTimeout}
-                min={10} max={300}
+                min={10}
+                max={300}
                 onChange={e => setDraft(d => ({ ...d, streamTimeout: Number(e.target.value) }))}
               />
             </div>
