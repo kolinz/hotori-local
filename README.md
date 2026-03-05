@@ -61,13 +61,15 @@ Chatbot アプリタイプ・Agent アプリタイプのどちらにも対応。
 ---
 
 ## 必要環境
-### ソースコードを使って動かす場合
-- Node.js 20+
+
+### Windwos向けアプリを使う場合
+- `release-learning-assistant-horori-win-0.2.0.zip` をダウンロードし、Zipファイルを展開してください。その後、`学習アシスタント Hotori Setup 0.2.0.exe` を実行してください。
 - [Ollama](https://ollama.com/) (起動済み)
 - Ollama 動作確認済みモデル: `llama3.2:3b`, `gemma3:1b`, `qwen3:0.6b`, `qwen3:1.7b`, `gemma3:4b`
 - OpenAI APIキー（OpenAIのモデルを使いたい場合のみ）
-### Windwos向けアプリを使う場合
-- [release-win-0.1.9-b.zip](https://github.com/kolinz/hotori-local/releases/tag/0.1.9b)をダウンロードし、Zipファイル解凍後、「学習アシスタント Hotori Setup 0.1.9-b.exe」をダブルクリックしてインストール
+
+### ソースコードを使って動かす場合
+- Node.js 20+
 - [Ollama](https://ollama.com/) (起動済み)
 - Ollama 動作確認済みモデル: `llama3.2:3b`, `gemma3:1b`, `qwen3:0.6b`, `qwen3:1.7b`, `gemma3:4b`
 - OpenAI APIキー（OpenAIのモデルを使いたい場合のみ）
