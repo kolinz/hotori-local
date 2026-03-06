@@ -14,6 +14,7 @@ const MAX_TABS = 5
 interface TabInfo {
   id: string
   title: string
+  sessionId?: string  // v0.2.1追加: Chat が createSession した時点で紐付け
 }
 
 function newTab(): TabInfo {
@@ -92,9 +93,6 @@ export default function App() {
   }, [])
 
   // ── モデル一覧取得 ──
-  // Ollama : 動的取得
-  // OpenAI : settings から登録モデルを使う（API不要）
-  // Dify   : モデル選択不要（空配列）
   useEffect(() => {
     if (!settings) return
     if (settings.connectionMode === 'openai') {
@@ -122,7 +120,6 @@ export default function App() {
     await api.setSettings(next)
     setSettings(next)
     setShowSettings(false)
-    // モード切り替え後にモデル一覧を再取得
     if (next.connectionMode === 'openai') {
       setModels(next.openaiModels ?? [])
       setOllamaOnline((next.openaiModels ?? []).length > 0 ? true : null)
@@ -134,9 +131,38 @@ export default function App() {
     }
   }
 
+  // ── タブタイトル更新（Chat.tsx の onSessionTitleChange から呼ばれる） ──
   const handleTabTitleUpdate = useCallback((tabId: string, title: string) => {
     setTabs(prev => prev.map(t => t.id === tabId ? { ...t, title } : t))
   }, [])
+
+  // ── セッション開始通知（Chat.tsx の onSessionStart から呼ばれる） v0.2.1追加 ──
+  const handleSessionStart = useCallback((tabId: string, sessionId: string, title: string) => {
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, sessionId, title } : t))
+  }, [])
+
+  // ── セッションIDでタブを閉じる v0.2.1追加 ──
+  const closeTabBySessionId = useCallback((sessionId: string) => {
+    setTabs(prev => {
+      const target = prev.find(t => t.sessionId === sessionId)
+      if (!target) return prev  // 対応するタブがなければ何もしない
+
+      if (prev.length === 1) {
+        // 最後の1枚は閉じずに新セッションにリセット
+        const fresh = newTab()
+        setActiveTabId(fresh.id)
+        resetAvatarMessage()
+        return [fresh]
+      }
+      const next = prev.filter(t => t.sessionId !== sessionId)
+      setActiveTabId(cur => {
+        if (cur !== target.id) return cur
+        const idx = prev.findIndex(t => t.id === target.id)
+        return (next[idx] ?? next[idx - 1]).id
+      })
+      return next
+    })
+  }, [resetAvatarMessage])
 
   const addTab = useCallback(() => {
     const tab = newTab()
@@ -173,15 +199,12 @@ export default function App() {
 
   if (!settings) return null
 
-  // 接続未設定・オフライン時はガイド表示
   const isOffline = settings.connectionMode === 'openai'
     ? (settings.openaiModels ?? []).length === 0 || !settings.openaiApiKey
     : settings.connectionMode === 'dify'
       ? !settings.difyApiKey
       : ollamaOnline === false
 
-  // OpenAI モードのとき Ollama 用モデル名が Chat に渡されるのを防ぐ
-  // Dify モードは Chat 内で model:'' を渡すため差し替え不要
   const resolvedSettings = settings.connectionMode === 'openai'
     ? { ...settings, defaultModel: (settings.openaiModels ?? [])[0] ?? settings.defaultModel }
     : settings
@@ -243,6 +266,7 @@ export default function App() {
                     models={models}
                     onMotionChange={tab.id === activeTabId ? handleMotionChange : () => {}}
                     onSessionTitleChange={handleTabTitleUpdate}
+                    onSessionStart={handleSessionStart}
                     onClearChat={resetAvatarMessage}
                     onPraiseReaction={tab.id === activeTabId ? handlePraiseReaction : undefined}
                     avatarMessage={tab.id === activeTabId ? avatarMessage : null}
@@ -263,7 +287,12 @@ export default function App() {
 
       {showDebug && <MotionDebugPanel current={motion} onChange={setMotion} onClose={() => setShowDebug(false)} />}
       {showSettings && <SettingsModal settings={settings} onSave={handleSettingsSave} onClose={() => setShowSettings(false)} />}
-      {showSessions && <SessionsModal onClose={() => setShowSessions(false)} />}
+      {showSessions && (
+        <SessionsModal
+          onClose={() => setShowSessions(false)}
+          onDeleteSession={closeTabBySessionId}
+        />
+      )}
     </div>
   )
 }
