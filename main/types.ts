@@ -9,6 +9,7 @@ export const IPC = {
   LOGS_APPEND_MESSAGE: 'logs:appendMessage',
   LOGS_LIST_SESSIONS:  'logs:listSessions',
   LOGS_GET_SESSION:    'logs:getSession',
+  LOGS_GET_SESSION_MESSAGES: 'logs:getSessionMessages',  // v0.2.1追加
   LOGS_EXPORT_CSV:     'logs:exportCsv',
   LOGS_DELETE_SESSION: 'logs:deleteSession',
   LOGS_CLEAR_ALL:      'logs:clearAll',

@@ -5,7 +5,7 @@ import { IPC, ChatStartPayload, ChatAbortPayload, Session, Message, AppSettings 
 import { streamChat, listModels } from './ollama'
 import { streamChatOpenAI } from './openai'
 import { streamDifyChat } from './dify'
-import { initStore, createSession, appendMessage, listSessions, getSession, exportSessionCsv, deleteSession, clearAllSessions, rateMessage } from './store'
+import { initStore, createSession, appendMessage, listSessions, getSession, getSessionMessages, exportSessionCsv, deleteSession, clearAllSessions, rateMessage } from './store'
 import { loadSettings, saveSettings } from './settings'
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
@@ -146,6 +146,10 @@ ipcMain.handle(IPC.LOGS_CREATE_SESSION, (_e, session: Session) => { createSessio
 ipcMain.handle(IPC.LOGS_APPEND_MESSAGE, (_e, msg: Message) => { appendMessage(msg) })
 ipcMain.handle(IPC.LOGS_LIST_SESSIONS, () => listSessions())
 ipcMain.handle(IPC.LOGS_GET_SESSION, (_e, id: string) => getSession(id))
+
+ipcMain.handle(IPC.LOGS_GET_SESSION_MESSAGES, (_e, sessionId: string) =>
+  getSessionMessages(sessionId)
+)
 
 ipcMain.handle(IPC.LOGS_EXPORT_CSV, async (_e, sessionId: string, defaultName: string) => {
   if (!mainWindow) return { ok: false, error: 'no window' }
