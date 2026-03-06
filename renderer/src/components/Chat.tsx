@@ -11,6 +11,7 @@ interface Props {
   models: string[]
   onMotionChange: (motion: MotionName) => void
   onSessionTitleChange: (tabId: string, title: string) => void
+  onSessionStart?: (tabId: string, sessionId: string, title: string) => void  // v0.2.1追加
   onClearChat?: () => void
   onPraiseReaction?: () => void
   avatarMessage?: string | null
@@ -41,7 +42,7 @@ function buildUnderstandingRegex(words: string[]): RegExp {
   return new RegExp(`^(${escaped.join('|')})[。、！!…\\s]*$`, 'i')
 }
 
-export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleChange, onClearChat, onPraiseReaction, avatarMessage }: Props) {
+export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleChange, onSessionStart, onClearChat, onPraiseReaction, avatarMessage }: Props) {
   const [messages, setMessages]           = useState<UIMessage[]>([])
   const [input, setInput]                 = useState('')
   const [isStreaming, setIsStreaming]     = useState(false)
@@ -162,6 +163,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     await api.createSession(session)
     setSessionCreated(true)
     onSessionTitleChange(tabId, session.title)
+    onSessionStart?.(tabId, sessionId, session.title)  // v0.2.1追加: App.tsx に sessionId を通知
   }, [sessionCreated, sessionId, settings.distance, selectedModel, isDify])
 
   const send = useCallback(async () => {
@@ -220,7 +222,6 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     accumulatedContent.current = ''
 
     if (isDify) {
-      // Dify モード: userQuery のみ渡す（履歴・システムプロンプトはDify側で管理）
       api.chatStart({
         requestId,
         model: '',
@@ -229,7 +230,6 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
         userQuery: text,
       })
     } else {
-      // Ollama / OpenAI モード: システムプロンプト + 全履歴を渡す
       const systemPrompt = buildSystemPrompt(settings.distance, toneTagEnabled)
       const history = messages.map(m => ({ role: m.role, content: m.content }))
       api.chatStart({
@@ -276,11 +276,9 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
   return (
     <div className={styles.chat}>
       <div className={styles.modelBar}>
-        {/* Difyモード: バッジ表示（モデル選択不要） */}
         {isDify && (
           <span className={styles.difyBadge}>⚡ Dify</span>
         )}
-        {/* Ollama / OpenAI モード: モデルセレクタ */}
         {!isDify && models.length > 1 && (
           <select
             className={styles.modelSelect}
@@ -334,7 +332,6 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
           </div>
         ))}
 
-        {/* アバターからの話しかけメッセージ（UI演出専用・DB保存なし） */}
         {showAvatarMsg && (
           <div className={`${styles.message} ${styles.assistant} ${styles.avatarMsg}`}>
             <div className={styles.avatarMsgBubble}>
