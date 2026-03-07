@@ -37,8 +37,8 @@ export default function App() {
 
   // v0.2.2: 右ペイン縦タブ ('avatar' | 'collection')
   const [rightTab, setRightTab] = useState<'avatar' | 'collection'>(() => {
-    try { return (localStorage.getItem('hotori.rightTab') as 'avatar' | 'collection') || 'avatar' }
-    catch { return 'avatar' }
+    try { return (localStorage.getItem('hotori.rightTab') as 'avatar' | 'collection') || 'collection' }
+    catch { return 'collection' }
   })
 
   // 右ペイン幅（リサイズ）
