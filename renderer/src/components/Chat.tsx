@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { api, AppSettings, Session, Message } from '../utils/electronAPI'
+import { api, AppSettings, Session, Message, MixingCollection } from '../utils/electronAPI'
 import type { ChatDeltaPayload, ChatDonePayload } from '../utils/electronAPI'
 import { parseToneTagged, MotionName } from '../utils/parseTone'
 import { buildSystemPrompt } from '../utils/systemPrompt'
+import { AddToCollectionPopup } from './CollectionPanel'
 import styles from './Chat.module.css'
 
 interface Props {
@@ -11,7 +12,7 @@ interface Props {
   models: string[]
   onMotionChange: (motion: MotionName) => void
   onSessionTitleChange: (tabId: string, title: string) => void
-  onSessionStart?: (tabId: string, sessionId: string, title: string) => void  // v0.2.1追加
+  onSessionStart?: (tabId: string, sessionId: string, title: string) => void
   onClearChat?: () => void
   onPraiseReaction?: () => void
   avatarMessage?: string | null
@@ -42,20 +43,26 @@ function buildUnderstandingRegex(words: string[]): RegExp {
   return new RegExp(`^(${escaped.join('|')})[。、！!…\\s]*$`, 'i')
 }
 
-export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleChange, onSessionStart, onClearChat, onPraiseReaction, avatarMessage }: Props) {
-  const [messages, setMessages]           = useState<UIMessage[]>([])
-  const [input, setInput]                 = useState('')
-  const [isStreaming, setIsStreaming]     = useState(false)
+export function Chat({
+  tabId, settings, models, onMotionChange, onSessionTitleChange,
+  onSessionStart, onClearChat, onPraiseReaction, avatarMessage,
+}: Props) {
+  const [messages, setMessages]         = useState<UIMessage[]>([])
+  const [input, setInput]               = useState('')
+  const [isStreaming, setIsStreaming]   = useState(false)
   const [selectedModel, setSelectedModel] = useState(settings.defaultModel)
-  const [sessionId]                       = useState(genId)
+  const [sessionId]                     = useState(genId)
   const [sessionCreated, setSessionCreated] = useState(false)
 
-  // settings.defaultModel が変わったら（接続モード切り替え時など）selectedModel を追従
-  // ただし既にセッションが開始済みの場合は変えない
+  // v0.2.2: コレクション関連状態
+  const [collections, setCollections]           = useState<MixingCollection[]>([])
+  const [collectionPopup, setCollectionPopup]   = useState<{ userMsgId: string; assistantMsgId: string } | null>(null)
+  const [addToast, setAddToast]                 = useState<string | null>(null)
+  const collectionBtnRef = useRef<HTMLButtonElement | null>(null)
+  const collectionBtnRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+
   useEffect(() => {
-    if (!sessionCreated) {
-      setSelectedModel(settings.defaultModel)
-    }
+    if (!sessionCreated) setSelectedModel(settings.defaultModel)
   }, [settings.defaultModel]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentRequestId   = useRef<string | null>(null)
@@ -68,11 +75,10 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
   const toneTagEnabled            = settings.toneTagEnabled ?? true
   const enabledMotions            = settings.enabledMotions ?? undefined
   const understandingWordsEnabled = settings.understandingWordsEnabled ?? true
+  const maxCollections            = settings.maxCollections ?? 10
 
-  /** 接続モード判定 */
   const isDify = settings.connectionMode === 'dify'
 
-  /** モデル表示名（CSVに記録するもの） */
   const resolveModelName = (): string => {
     if (isDify) return 'Dify'
     return selectedModel
@@ -94,6 +100,11 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
 
   useEffect(() => () => { if (motionTimerRef.current) clearTimeout(motionTimerRef.current) }, [])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, avatarMessage])
+
+  // v0.2.2: コレクション一覧を取得（コレクション追加ポップアップ用）
+  useEffect(() => {
+    api.listCollections().then(setCollections)
+  }, [])
 
   useEffect(() => {
     const unsubDelta = api.onChatDelta((p: ChatDeltaPayload) => {
@@ -119,7 +130,10 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
       setMessages(prev => {
         const last = prev[prev.length - 1]
         if (!last || last.role !== 'assistant') return prev
-        return [...prev.slice(0, -1), { ...last, content: fullContent, contentClean: clean, tone, isStreaming: false, ttft_ms: p.ttft_ms }]
+        return [...prev.slice(0, -1), {
+          ...last, content: fullContent, contentClean: clean, tone,
+          isStreaming: false, ttft_ms: p.ttft_ms,
+        }]
       })
 
       setIsStreaming(false)
@@ -154,17 +168,15 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
   const ensureSession = useCallback(async () => {
     if (sessionCreated) return
     const session: Session = {
-      id: sessionId,
-      title: makeSessionTitle(),
+      id: sessionId, title: makeSessionTitle(),
       started_at: new Date().toISOString(),
-      distance: settings.distance,
-      model: resolveModelName(),
+      distance: settings.distance, model: resolveModelName(),
     }
     await api.createSession(session)
     setSessionCreated(true)
     onSessionTitleChange(tabId, session.title)
-    onSessionStart?.(tabId, sessionId, session.title)  // v0.2.1追加: App.tsx に sessionId を通知
-  }, [sessionCreated, sessionId, settings.distance, selectedModel, isDify])
+    onSessionStart?.(tabId, sessionId, session.title)
+  }, [sessionCreated, sessionId, settings.distance, selectedModel, isDify]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = useCallback(async () => {
     const text = input.trim()
@@ -173,13 +185,15 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
 
     if (motionTimerRef.current) { clearTimeout(motionTimerRef.current); motionTimerRef.current = null }
 
-    // 理解・納得ワード検知（Difyモードでも動作）
     const understandingRegex = understandingWordsEnabled
       ? buildUnderstandingRegex(settings.understandingWords ?? [])
       : /(?!)/
 
     if (understandingRegex.test(text)) {
-      const userMsg: UIMessage = { id: genId(), role: 'user', content: text, contentClean: text, tone: 'neutral', isStreaming: false }
+      const userMsg: UIMessage = {
+        id: genId(), role: 'user', content: text, contentClean: text,
+        tone: 'neutral', isStreaming: false,
+      }
       setMessages(prev => [...prev, userMsg])
       setInput('')
       await api.appendMessage({
@@ -197,7 +211,10 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
       return
     }
 
-    const userMsg: UIMessage = { id: genId(), role: 'user', content: text, contentClean: text, tone: 'neutral', isStreaming: false }
+    const userMsg: UIMessage = {
+      id: genId(), role: 'user', content: text, contentClean: text,
+      tone: 'neutral', isStreaming: false,
+    }
     const asstId = genId()
     assistantMsgId.current = asstId
 
@@ -222,13 +239,7 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     accumulatedContent.current = ''
 
     if (isDify) {
-      api.chatStart({
-        requestId,
-        model: '',
-        distance: settings.distance,
-        messages: [],
-        userQuery: text,
-      })
+      api.chatStart({ requestId, model: '', distance: settings.distance, messages: [], userQuery: text })
     } else {
       const systemPrompt = buildSystemPrompt(settings.distance, toneTagEnabled)
       const history = messages.map(m => ({ role: m.role, content: m.content }))
@@ -237,7 +248,9 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
         messages: [{ role: 'system', content: systemPrompt }, ...history, { role: 'user', content: text }],
       })
     }
-  }, [input, isStreaming, ensureSession, messages, onMotionChange, onPraiseReaction, selectedModel, sessionId, settings.distance, settings.understandingWords, toneTagEnabled, understandingWordsEnabled, isDify])
+  }, [input, isStreaming, ensureSession, messages, onMotionChange, onPraiseReaction,
+      selectedModel, sessionId, settings.distance, settings.understandingWords,
+      toneTagEnabled, understandingWordsEnabled, isDify]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const abort = useCallback(() => {
     if (!currentRequestId.current) return
@@ -261,7 +274,9 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     onClearChat?.()
   }, [isStreaming, onMotionChange, onSessionTitleChange, onClearChat, tabId])
 
-  const handleRate = useCallback(async (msgId: string, rating: 'good' | 'bad', current: 'good' | 'bad' | null | undefined) => {
+  const handleRate = useCallback(async (
+    msgId: string, rating: 'good' | 'bad', current: 'good' | 'bad' | null | undefined,
+  ) => {
     const newRating = current === rating ? null : rating
     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, rating: newRating } : m))
     await api.rateMessage(msgId, newRating)
@@ -271,14 +286,64 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
 
+  // ── v0.2.2: コレクション追加ハンドラ ────────────────────────────────────
+  const openCollectionPopup = useCallback((userMsgId: string, assistantMsgId: string) => {
+    api.listCollections().then(setCollections)
+    setCollectionPopup({ userMsgId, assistantMsgId })
+  }, [])
+
+  const handleCollectionSelect = useCallback(async (collectionId: string) => {
+    if (!collectionPopup || !sessionCreated) return
+    setCollectionPopup(null)
+    try {
+      await api.addPair(collectionId, sessionId, collectionPopup.userMsgId, collectionPopup.assistantMsgId)
+      const cols = await api.listCollections()
+      setCollections(cols)
+      const col = cols.find(c => c.id === collectionId)
+      setAddToast(`📚 「${col?.name ?? ''}」に追加しました`)
+      setTimeout(() => setAddToast(null), 2500)
+    } catch {
+      setAddToast('⚠️ 追加に失敗しました')
+      setTimeout(() => setAddToast(null), 2500)
+    }
+  }, [collectionPopup, sessionId, sessionCreated])
+
+  const handleCreateAndSelect = useCallback(async (name: string) => {
+    if (!collectionPopup || !sessionCreated) return
+    const collections = await api.listCollections()
+    if (collections.length >= maxCollections) {
+      setAddToast(`⚠️ コレクションは最大${maxCollections}件です`)
+      setTimeout(() => setAddToast(null), 2500)
+      setCollectionPopup(null)
+      return
+    }
+    const newCol = await api.createCollection(name)
+    setCollectionPopup(null)
+    try {
+      await api.addPair(newCol.id, sessionId, collectionPopup.userMsgId, collectionPopup.assistantMsgId)
+      const updated = await api.listCollections()
+      setCollections(updated)
+      setAddToast(`📚 「${name}」を作成して追加しました`)
+      setTimeout(() => setAddToast(null), 2500)
+    } catch {
+      setAddToast('⚠️ 追加に失敗しました')
+      setTimeout(() => setAddToast(null), 2500)
+    }
+  }, [collectionPopup, sessionId, sessionCreated, maxCollections])
+
   const showAvatarMsg = !isStreaming && avatarMessage && messages.length === 0
+
+  // ── ユーザー→アシスタント のペアを特定するヘルパー ──────────────────────
+  const findUserMsgId = (assistantIdx: number): string | undefined => {
+    for (let i = assistantIdx - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') return messages[i].id
+    }
+  }
 
   return (
     <div className={styles.chat}>
       <div className={styles.modelBar}>
-        {isDify && (
-          <span className={styles.difyBadge}>⚡ Dify</span>
-        )}
+        {isDify && <span className={styles.difyBadge}>⚡ Dify</span>}
         {!isDify && models.length > 1 && (
           <select
             className={styles.modelSelect}
@@ -299,6 +364,11 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
         )}
       </div>
 
+      {/* トースト */}
+      {addToast && (
+        <div className={styles.collectionToast}>{addToast}</div>
+      )}
+
       <div className={styles.messages}>
         {messages.length === 0 && !avatarMessage && (
           <div className={styles.welcome}>
@@ -308,7 +378,8 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
             </p>
           </div>
         )}
-        {messages.map(msg => (
+
+        {messages.map((msg, idx) => (
           <div key={msg.id} className={`${styles.message} ${styles[msg.role]}`}>
             <div className={`${styles.bubble} selectable`}>
               {msg.contentClean}
@@ -326,6 +397,37 @@ export function Chat({ tabId, settings, models, onMotionChange, onSessionTitleCh
                   onClick={() => handleRate(msg.id, 'bad', msg.rating)}
                   title="Not Good"
                 >👎</button>
+                {/* v0.2.2: コレクション追加ボタン */}
+                <div className={styles.collectionBtnWrap}>
+                  <button
+                    ref={el => {
+                      if (el) collectionBtnRefs.current.set(msg.id, el)
+                      else collectionBtnRefs.current.delete(msg.id)
+                    }}
+                    className={`${styles.rateBtn} ${styles.collectBtn}`}
+                    onClick={() => {
+                      const userMsgId = findUserMsgId(idx)
+                      if (!userMsgId) return
+                      if (collectionPopup?.assistantMsgId === msg.id) {
+                        setCollectionPopup(null)
+                      } else {
+                        openCollectionPopup(userMsgId, msg.id)
+                      }
+                    }}
+                    title="コレクションに追加"
+                    disabled={!sessionCreated}
+                  >🎛️</button>
+                  {collectionPopup?.assistantMsgId === msg.id && (
+                    <AddToCollectionPopup
+                      collections={collections}
+                      maxCollections={maxCollections}
+                      onSelect={handleCollectionSelect}
+                      onCreateAndSelect={handleCreateAndSelect}
+                      onClose={() => setCollectionPopup(null)}
+                      anchorRef={{ current: collectionBtnRefs.current.get(msg.id) ?? null } as React.RefObject<HTMLElement>}
+                    />
+                  )}
+                </div>
                 {msg.ttft_ms && <span className={styles.meta}>TTFT: {msg.ttft_ms}ms</span>}
               </div>
             )}

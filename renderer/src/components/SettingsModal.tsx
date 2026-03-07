@@ -19,11 +19,8 @@ const DISTANCES: { value: Distance; label: string; desc: string }[] = [
 ]
 
 const MOTION_LABELS: Record<MotionName, string> = {
-  neutral: '😊 neutral',
-  think:   '🤔 think',
-  explain: '💡 explain',
-  praise:  '🎉 praise',
-  ask:     '❓ ask',
+  neutral: '😊 neutral', think: '🤔 think', explain: '💡 explain',
+  praise: '🎉 praise', ask: '❓ ask',
 }
 
 const CONNECTION_MODES: { value: ConnectionMode; label: string; desc: string }[] = [
@@ -33,10 +30,10 @@ const CONNECTION_MODES: { value: ConnectionMode; label: string; desc: string }[]
 ]
 
 export function SettingsModal({ settings, onSave, onClose }: Props) {
-  const [draft, setDraft]             = useState<AppSettings>({
-    // 既存設定にdify関連のデフォルト値をマージ（後方互換）
+  const [draft, setDraft] = useState<AppSettings>({
     difyUrl: 'https://api.dify.ai/v1',
     difyApiKey: '',
+    maxCollections: 10,
     ...settings,
   })
   const [newWord, setNewWord]         = useState('')
@@ -103,9 +100,9 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
 
   const enabledMotions = draft.enabledMotions ?? [...ALL_MOTIONS]
   const openaiModels   = draft.openaiModels ?? []
-  const isOllama       = draft.connectionMode === 'ollama' || !draft.connectionMode
-  const isOpenAI       = draft.connectionMode === 'openai'
-  const isDify         = draft.connectionMode === 'dify'
+  const isOllama = draft.connectionMode === 'ollama' || !draft.connectionMode
+  const isOpenAI = draft.connectionMode === 'openai'
+  const isDify   = draft.connectionMode === 'dify'
 
   return (
     <div className={styles.overlay} onClick={onClose}>
@@ -119,101 +116,76 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
 
           {/* ── 接続設定 ── */}
           <Section title="🔗 接続設定">
-            {/* モード選択 */}
             <div className={styles.row}>
               <span className={styles.label}>接続モード</span>
-              <div className={styles.distanceGrid}>
+              <select
+                className={styles.select}
+                value={draft.connectionMode}
+                onChange={e => setDraft(d => ({ ...d, connectionMode: e.target.value as ConnectionMode }))}
+              >
                 {CONNECTION_MODES.map(m => (
-                  <button
-                    key={m.value}
-                    className={`${styles.distanceBtn} ${draft.connectionMode === m.value ? styles.selected : ''}`}
-                    onClick={() => setDraft(d => ({ ...d, connectionMode: m.value }))}
-                    title={m.desc}
-                  >
-                    {m.label}
-                  </button>
+                  <option key={m.value} value={m.value}>{m.label} — {m.desc}</option>
                 ))}
-              </div>
+              </select>
             </div>
 
-            {/* Ollama 設定 */}
             {isOllama && (
-              <>
-                <div className={styles.row}>
-                  <span className={styles.label}>Ollama URL</span>
-                  <input
-                    className={styles.textInput}
-                    type="text"
-                    placeholder="http://localhost:11434"
-                    value={draft.ollamaUrl ?? 'http://localhost:11434'}
-                    onChange={e => setDraft(d => ({ ...d, ollamaUrl: e.target.value }))}
-                    spellCheck={false}
-                  />
-                </div>
-                <p className={styles.hint}>Ollamaのエンドポイント。リモートサーバーに接続する場合は変更してください。</p>
-              </>
+              <div className={styles.row}>
+                <span className={styles.label}>Ollama URL</span>
+                <input
+                  className={styles.textInput}
+                  value={draft.ollamaUrl}
+                  onChange={e => setDraft(d => ({ ...d, ollamaUrl: e.target.value }))}
+                  placeholder="http://localhost:11434"
+                  spellCheck={false}
+                />
+              </div>
             )}
 
-            {/* OpenAI 設定 */}
             {isOpenAI && (
               <>
-                {/* APIキー */}
-                <div className={styles.row}>
-                  <span className={styles.label}>APIキー</span>
-                  <div className={styles.apiKeyRow}>
-                    <input
-                      className={styles.textInput}
-                      type={showApiKey ? 'text' : 'password'}
-                      placeholder="sk-..."
-                      value={draft.openaiApiKey ?? ''}
-                      onChange={e => setDraft(d => ({ ...d, openaiApiKey: e.target.value }))}
-                      spellCheck={false}
-                    />
-                    <button
-                      className={styles.toggleVisBtn}
-                      onClick={() => setShowApiKey(v => !v)}
-                      title={showApiKey ? '隠す' : '表示'}
-                    >
-                      {showApiKey ? '🙈' : '👁️'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* カスタムエンドポイント */}
                 <div className={styles.row}>
                   <span className={styles.label}>エンドポイント</span>
                   <input
                     className={styles.textInput}
-                    type="text"
-                    placeholder="https://api.openai.com"
-                    value={draft.openaiBaseUrl ?? 'https://api.openai.com'}
+                    value={draft.openaiBaseUrl}
                     onChange={e => setDraft(d => ({ ...d, openaiBaseUrl: e.target.value }))}
+                    placeholder="https://api.openai.com"
                     spellCheck={false}
                   />
                 </div>
                 <p className={styles.hint}>OpenAI互換APIを使う場合はエンドポイントを変更してください。</p>
-
-                {/* モデル管理 */}
-                <div className={styles.label} style={{ marginBottom: 8, marginTop: 12 }}>使用するモデル</div>
-
-                <div className={styles.wordChips} style={{ marginBottom: 8 }}>
+                <div className={styles.row}>
+                  <span className={styles.label}>API キー</span>
+                  <div className={styles.apiKeyRow}>
+                    <input
+                      className={styles.textInput}
+                      type={showApiKey ? 'text' : 'password'}
+                      value={draft.openaiApiKey}
+                      onChange={e => setDraft(d => ({ ...d, openaiApiKey: e.target.value }))}
+                      placeholder="sk-..."
+                      spellCheck={false}
+                      autoComplete="off"
+                    />
+                    <button className={styles.toggleVisBtn} onClick={() => setShowApiKey(v => !v)}>
+                      {showApiKey ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                </div>
+                <div className={styles.label} style={{ marginTop: 12, marginBottom: 8 }}>使用するモデル</div>
+                <div className={styles.wordChips}>
                   {openaiModels.length === 0 && (
                     <span className={styles.hint}>モデルが登録されていません</span>
                   )}
                   {openaiModels.map(m => (
                     <span key={m} className={styles.wordChip}>
                       {m}
-                      <button
-                        className={styles.wordChipRemove}
-                        onClick={() => handleRemoveModel(m)}
-                        title="削除"
-                      >✕</button>
+                      <button className={styles.wordChipRemove} onClick={() => handleRemoveModel(m)} title="削除">✕</button>
                     </span>
                   ))}
                 </div>
-
                 <div className={styles.presetRow}>
-                  <span className={styles.hint} style={{ marginRight: 8 }}>プリセット:</span>
+                  <span className={styles.hint} style={{ marginRight: 4 }}>プリセット:</span>
                   {OPENAI_PRESET_MODELS.map(m => (
                     <button
                       key={m}
@@ -221,13 +193,10 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                       onClick={() => handleAddPresetModel(m)}
                       disabled={openaiModels.includes(m)}
                       title={openaiModels.includes(m) ? '追加済み' : m}
-                    >
-                      {m}
-                    </button>
+                    >{m}</button>
                   ))}
                 </div>
-
-                <div className={styles.wordAddRow}>
+                <div className={styles.wordAddRow} style={{ marginTop: 8 }}>
                   <input
                     className={styles.wordInput}
                     type="text"
@@ -242,17 +211,15 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
               </>
             )}
 
-            {/* Dify 設定 */}
             {isDify && (
               <>
                 <div className={styles.row}>
                   <span className={styles.label}>エンドポイント URL</span>
                   <input
                     className={styles.textInput}
-                    type="text"
-                    placeholder="https://api.dify.ai/v1"
                     value={draft.difyUrl ?? ''}
                     onChange={e => setDraft(d => ({ ...d, difyUrl: e.target.value }))}
+                    placeholder="https://api.dify.ai/v1"
                     spellCheck={false}
                   />
                 </div>
@@ -262,26 +229,18 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                     <input
                       className={styles.textInput}
                       type={showDifyKey ? 'text' : 'password'}
-                      placeholder="app-xxxxxxxxxxxxxxxxxxxx"
                       value={draft.difyApiKey ?? ''}
                       onChange={e => setDraft(d => ({ ...d, difyApiKey: e.target.value }))}
+                      placeholder="app-xxxxxxxxxxxxxxxxxxxx"
                       spellCheck={false}
                       autoComplete="off"
                     />
-                    <button
-                      className={styles.toggleVisBtn}
-                      onClick={() => setShowDifyKey(v => !v)}
-                      title={showDifyKey ? '隠す' : '表示'}
-                    >
+                    <button className={styles.toggleVisBtn} onClick={() => setShowDifyKey(v => !v)}>
                       {showDifyKey ? '🙈' : '👁️'}
                     </button>
                   </div>
                 </div>
-                <p className={styles.hint}>
-                  Dify アプリの「API アクセス」からAPIキーを取得してください。
-                  Chatbot・Agent どちらのアプリタイプにも対応しています。
-                  セルフホスト環境では localhost URL も使用できます。
-                </p>
+                <p className={styles.hint}>Dify アプリの「API アクセス」からAPIキーを取得してください。</p>
               </>
             )}
           </Section>
@@ -297,28 +256,17 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                   readOnly
                   title={draft.avatarPath}
                 />
-                <button className={styles.pickBtn} onClick={handleAvatarPick}>
-                  📁 選択
-                </button>
+                <button className={styles.pickBtn} onClick={handleAvatarPick}>📁 選択</button>
                 {draft.avatarPath && (
-                  <button className={styles.clearBtn} onClick={() => setDraft(d => ({ ...d, avatarPath: '' }))}>
-                    ✕
-                  </button>
+                  <button className={styles.clearBtn} onClick={() => setDraft(d => ({ ...d, avatarPath: '' }))}>✕</button>
                 )}
               </div>
             </div>
-            {draft.avatarPath && (
-              <p className={styles.pathDebug}>📂 {draft.avatarPath}</p>
-            )}
-            <p className={styles.hint}>
-              フォルダに neutral / think / explain / praise / ask .png を配置してください。
-            </p>
-          </Section>
+            {draft.avatarPath && <p className={styles.pathDebug}>📂 {draft.avatarPath}</p>}
+            <p className={styles.hint}>フォルダに neutral / think / explain / praise / ask .png を配置してください。</p>
 
-          {/* ── 背景画像 ── */}
-          <Section title="🖼️ 背景画像">
-            <div className={styles.row}>
-              <span className={styles.label}>画像ファイル</span>
+            <div className={styles.row} style={{ marginTop: 10 }}>
+              <span className={styles.label}>背景画像</span>
               <div className={styles.avatarPicker}>
                 <input
                   className={styles.pathInput}
@@ -326,24 +274,17 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                   readOnly
                   title={draft.backgroundImagePath}
                 />
-                <button className={styles.pickBtn} onClick={handleBgPick}>
-                  📁 選択
-                </button>
+                <button className={styles.pickBtn} onClick={handleBgPick}>📁 選択</button>
                 {draft.backgroundImagePath && (
-                  <button className={styles.clearBtn} onClick={() => setDraft(d => ({ ...d, backgroundImagePath: '' }))}>
-                    ✕
-                  </button>
+                  <button className={styles.clearBtn} onClick={() => setDraft(d => ({ ...d, backgroundImagePath: '' }))}>✕</button>
                 )}
               </div>
             </div>
-            {draft.backgroundImagePath && (
-              <p className={styles.pathDebug}>📂 {draft.backgroundImagePath}</p>
-            )}
             <p className={styles.hint}>PNG / JPG / WebP / GIF に対応。チャット画面の背景に表示されます。</p>
           </Section>
 
-          {/* ── アバター動作 ── */}
-          <Section title="🎬 アバター動作">
+          {/* ── toneTag / モーション ── */}
+          <Section title="🎬 toneTag / モーション">
             <label className={styles.toggle}>
               <input
                 type="checkbox"
@@ -415,9 +356,7 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                   className={`${styles.distanceBtn} ${draft.distance === d.value ? styles.selected : ''}`}
                   onClick={() => setDraft(prev => ({ ...prev, distance: d.value }))}
                   title={d.desc}
-                >
-                  {d.label}
-                </button>
+                >{d.label}</button>
               ))}
             </div>
             <p className={styles.hint}>現在: {DISTANCES.find(d => d.value === draft.distance)?.desc}</p>
@@ -458,11 +397,25 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 type="number"
                 className={styles.numInput}
                 value={draft.streamTimeout}
-                min={10}
-                max={300}
+                min={10} max={300}
                 onChange={e => setDraft(d => ({ ...d, streamTimeout: Number(e.target.value) }))}
               />
             </div>
+          </Section>
+
+          {/* ── 学習コレクション (v0.2.2追加) ── */}
+          <Section title="📚 学習コレクション">
+            <div className={styles.row}>
+              <span className={styles.label}>コレクション最大件数</span>
+              <input
+                type="number"
+                className={styles.numInput}
+                value={draft.maxCollections ?? 10}
+                min={1}
+                onChange={e => setDraft(d => ({ ...d, maxCollections: Math.max(1, Number(e.target.value)) }))}
+              />
+            </div>
+            <p className={styles.hint}>目安は20程度です。コレクションが上限に達すると、新規作成がブロックされます。</p>
           </Section>
 
         </div>
