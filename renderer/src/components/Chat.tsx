@@ -205,8 +205,8 @@ export function Chat({
       } as Message)
       onMotionChange('praise')
       motionTimerRef.current = setTimeout(() => {
+        onPraiseReaction?.()   // isPraiseRoute = true をセットしてからneutralに遷移
         onMotionChange('neutral')
-        onPraiseReaction?.()
       }, 2000)
       return
     }
@@ -331,7 +331,7 @@ export function Chat({
     }
   }, [collectionPopup, sessionId, sessionCreated, maxCollections])
 
-  const showAvatarMsg = !isStreaming && avatarMessage && messages.length === 0
+  const showAvatarMsg = !isStreaming && !!avatarMessage
 
   // ── ユーザー→アシスタント のペアを特定するヘルパー ──────────────────────
   const findUserMsgId = (assistantIdx: number): string | undefined => {
