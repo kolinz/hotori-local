@@ -1,6 +1,6 @@
 {
-  "name": "learning-assistant",
-  "version": "0.2.1",
+  "name": "learning-assistant-hotori",
+  "version": "0.2.2",
   "description": "AI-powered Learning assistant and RAG-to-SFT pipeline tool. Supports Ollama, OpenAI, and Dify.",
   "main": "dist-electron/main.js",
   "scripts": {
