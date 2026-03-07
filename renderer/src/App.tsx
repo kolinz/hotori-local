@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Chat } from './components/Chat'
 import { AvatarLayer } from './components/AvatarLayer'
+import { CollectionPanel } from './components/CollectionPanel'
 import { SettingsModal } from './components/SettingsModal'
 import { SessionsModal } from './components/SessionsModal'
 import { OllamaGuide } from './components/OllamaGuide'
@@ -10,11 +11,14 @@ import type { MotionName } from './utils/parseTone'
 import styles from './App.module.css'
 
 const MAX_TABS = 5
+const RIGHT_PANE_MIN = 180
+const RIGHT_PANE_MAX = 400
+const RIGHT_PANE_DEFAULT = 220
 
 interface TabInfo {
   id: string
   title: string
-  sessionId?: string  // v0.2.1追加: Chat が createSession した時点で紐付け
+  sessionId?: string
 }
 
 function newTab(): TabInfo {
@@ -31,6 +35,21 @@ export default function App() {
   const [showSessions, setShowSessions] = useState(false)
   const [showDebug, setShowDebug]       = useState(false)
 
+  // v0.2.2: 右ペイン縦タブ ('avatar' | 'collection')
+  const [rightTab, setRightTab] = useState<'avatar' | 'collection'>(() => {
+    try { return (localStorage.getItem('hotori.rightTab') as 'avatar' | 'collection') || 'avatar' }
+    catch { return 'avatar' }
+  })
+
+  // 右ペイン幅（リサイズ）
+  const [rightWidth, setRightWidth] = useState<number>(() => {
+    try { return Number(localStorage.getItem('hotori.rightWidth')) || RIGHT_PANE_DEFAULT }
+    catch { return RIGHT_PANE_DEFAULT }
+  })
+  const resizerDragging = useRef(false)
+  const resizerStartX   = useRef(0)
+  const resizerStartW   = useRef(0)
+
   // ── アバターからの話しかけメッセージ ──
   const [avatarMessage, setAvatarMessage] = useState<string | null>('私に何を聞きたいの？')
   const avatarMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -44,13 +63,9 @@ export default function App() {
       isPraiseRoute.current = false
       if (avatarMsgTimerRef.current) clearTimeout(avatarMsgTimerRef.current)
     } else if (m === 'neutral') {
-      if (isPraiseRoute.current) {
-        isPraiseRoute.current = false
-        return
-      }
-      if (isFirstResponse.current) {
-        isFirstResponse.current = false
-      } else {
+      if (isPraiseRoute.current) { isPraiseRoute.current = false; return }
+      if (isFirstResponse.current) { isFirstResponse.current = false }
+      else {
         if (avatarMsgTimerRef.current) clearTimeout(avatarMsgTimerRef.current)
         avatarMsgTimerRef.current = setTimeout(() => {
           setAvatarMessage('まだ聞きたいことはあるかしら？')
@@ -103,10 +118,7 @@ export default function App() {
       setModels([])
       setOllamaOnline(!!settings.difyApiKey ? true : null)
     } else {
-      api.listModels().then(m => {
-        setModels(m)
-        setOllamaOnline(m.length > 0)
-      })
+      api.listModels().then(m => { setModels(m); setOllamaOnline(m.length > 0) })
     }
   }, [settings?.connectionMode, settings?.openaiModels, settings?.ollamaUrl, settings?.difyApiKey])
 
@@ -131,28 +143,20 @@ export default function App() {
     }
   }
 
-  // ── タブタイトル更新（Chat.tsx の onSessionTitleChange から呼ばれる） ──
   const handleTabTitleUpdate = useCallback((tabId: string, title: string) => {
     setTabs(prev => prev.map(t => t.id === tabId ? { ...t, title } : t))
   }, [])
 
-  // ── セッション開始通知（Chat.tsx の onSessionStart から呼ばれる） v0.2.1追加 ──
   const handleSessionStart = useCallback((tabId: string, sessionId: string, title: string) => {
     setTabs(prev => prev.map(t => t.id === tabId ? { ...t, sessionId, title } : t))
   }, [])
 
-  // ── セッションIDでタブを閉じる v0.2.1追加 ──
   const closeTabBySessionId = useCallback((sessionId: string) => {
     setTabs(prev => {
       const target = prev.find(t => t.sessionId === sessionId)
-      if (!target) return prev  // 対応するタブがなければ何もしない
-
+      if (!target) return prev
       if (prev.length === 1) {
-        // 最後の1枚は閉じずに新セッションにリセット
-        const fresh = newTab()
-        setActiveTabId(fresh.id)
-        resetAvatarMessage()
-        return [fresh]
+        const fresh = newTab(); setActiveTabId(fresh.id); resetAvatarMessage(); return [fresh]
       }
       const next = prev.filter(t => t.sessionId !== sessionId)
       setActiveTabId(cur => {
@@ -174,59 +178,107 @@ export default function App() {
     resetAvatarMessage()
   }, [resetAvatarMessage])
 
-  const closeTab = useCallback((tabId: string) => {
+  const closeTab = useCallback((id: string) => {
     setTabs(prev => {
       if (prev.length === 1) {
-        const fresh = newTab()
-        setActiveTabId(fresh.id)
-        resetAvatarMessage()
-        return [fresh]
+        const fresh = newTab(); setActiveTabId(fresh.id); resetAvatarMessage(); return [fresh]
       }
-      const next = prev.filter(t => t.id !== tabId)
+      const next = prev.filter(t => t.id !== id)
       setActiveTabId(cur => {
-        if (cur !== tabId) return cur
-        const idx = prev.findIndex(t => t.id === tabId)
+        if (cur !== id) return cur
+        const idx = prev.findIndex(t => t.id === id)
         return (next[idx] ?? next[idx - 1]).id
       })
       return next
     })
-  }, [resetAvatarMessage])
-
-  const handleTabSwitch = useCallback((tabId: string) => {
-    setActiveTabId(tabId)
     resetAvatarMessage()
   }, [resetAvatarMessage])
 
+  const handleTabSwitch = useCallback((id: string) => {
+    setActiveTabId(id)
+    resetAvatarMessage()
+  }, [resetAvatarMessage])
+
+  // ── 右ペインリサイズ ──
+  const handleResizerMouseDown = (e: React.MouseEvent) => {
+    resizerDragging.current = true
+    resizerStartX.current   = e.clientX
+    resizerStartW.current   = rightWidth
+    document.body.style.cursor    = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!resizerDragging.current) return
+      const delta = resizerStartX.current - e.clientX  // 左方向が正
+      const next  = Math.min(RIGHT_PANE_MAX, Math.max(RIGHT_PANE_MIN, resizerStartW.current + delta))
+      setRightWidth(next)
+    }
+    const onUp = () => {
+      if (!resizerDragging.current) return
+      resizerDragging.current = false
+      document.body.style.cursor     = ''
+      document.body.style.userSelect = ''
+      setRightWidth(w => { localStorage.setItem('hotori.rightWidth', String(w)); return w })
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup',   onUp)
+    return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
+  }, [])
+
+  // ── 右タブ切替 (localStorage 永続化) ──
+  const switchRightTab = (tab: 'avatar' | 'collection') => {
+    setRightTab(tab)
+    try { localStorage.setItem('hotori.rightTab', tab) } catch {}
+  }
+
   if (!settings) return null
 
-  const isOffline = settings.connectionMode === 'openai'
-    ? (settings.openaiModels ?? []).length === 0 || !settings.openaiApiKey
-    : settings.connectionMode === 'dify'
-      ? !settings.difyApiKey
-      : ollamaOnline === false
+  const connectionMode = settings.connectionMode ?? 'ollama'
+  const openaiModels   = settings.openaiModels ?? []
+  const openaiApiKey   = settings.openaiApiKey ?? ''
+  const difyApiKey     = settings.difyApiKey ?? ''
 
-  const resolvedSettings = settings.connectionMode === 'openai'
-    ? { ...settings, defaultModel: (settings.openaiModels ?? [])[0] ?? settings.defaultModel }
+  const isOffline =
+    connectionMode === 'openai' ? openaiModels.length === 0 || !openaiApiKey
+    : connectionMode === 'dify' ? !difyApiKey
+    : ollamaOnline === false
+
+  const resolvedSettings = connectionMode === 'openai'
+    ? { ...settings, defaultModel: openaiModels[0] ?? settings.defaultModel }
     : settings
 
   return (
     <div className={styles.root}>
+      {/* ── ツールバー ── */}
       <div className={styles.toolbar}>
-        <span className={styles.appTitle}>学習アシスタント Hotori</span>
+        <span className={styles.appTitle}>🌸 Hotori</span>
         <div className={styles.toolbarActions}>
           <button
+            className={styles.toolbarBtn}
+            onClick={addTab}
+            title="新しいタブ"
+          >＋</button>
+          <button
             className={`${styles.toolbarBtn} ${showDebug ? styles.toolbarBtnActive : ''}`}
-            onClick={() => setShowDebug(v => !v)} title="モーションテスト"
+            onClick={() => setShowDebug(v => !v)}
+            title="モーションデバッグ"
           >🎭</button>
-          <button className={styles.toolbarBtn} onClick={() => setShowSessions(true)} title="履歴">📋</button>
-          <button className={styles.toolbarBtn} onClick={() => setShowSettings(true)} title="設定">⚙️</button>
+          <button
+            className={`${styles.toolbarBtn} ${showSessions ? styles.toolbarBtnActive : ''}`}
+            onClick={() => setShowSessions(v => !v)}
+            title="学習セッション一覧"
+          >📋</button>
+          <button
+            className={`${styles.toolbarBtn} ${showSettings ? styles.toolbarBtnActive : ''}`}
+            onClick={() => setShowSettings(v => !v)}
+            title="設定"
+          >⚙️</button>
         </div>
       </div>
 
+      {/* ── タブバー ── */}
       <div className={styles.tabBar}>
-        {tabs.length < MAX_TABS && (
-          <button className={styles.tabAdd} onClick={addTab} title="新しいセッション">＋</button>
-        )}
         {tabs.map(tab => (
           <div
             key={tab.id}
@@ -243,15 +295,15 @@ export default function App() {
         ))}
       </div>
 
+      {/* ── メインエリア ── */}
       <div
         className={styles.main}
         style={bgDataUrl ? {
           backgroundImage: `url(${bgDataUrl})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
         } : undefined}
       >
+        {/* チャットペイン */}
         <div
           className={styles.chatPane}
           style={bgDataUrl ? { backgroundColor: 'rgba(10,10,26,0.55)', backdropFilter: 'blur(2px)' } : undefined}
@@ -276,12 +328,41 @@ export default function App() {
           }
         </div>
 
-        <div className={styles.avatarPane}>
-          <AvatarLayer
-            motion={motion}
-            avatarPath={settings.avatarPath}
-            reducedMotion={settings.reducedMotion}
-          />
+        {/* ── リサイザー ── */}
+        <div
+          className={styles.resizer}
+          onMouseDown={handleResizerMouseDown}
+          title="ドラッグで幅を調整"
+        />
+
+        {/* ── 右ペイン ── */}
+        <div className={styles.rightPane} style={{ width: rightWidth }}>
+          {/* 縦タブ */}
+          <div className={styles.rightTabBar}>
+            <button
+              className={`${styles.rightTabBtn} ${rightTab === 'avatar' ? styles.rightTabBtnActive : ''}`}
+              onClick={() => switchRightTab('avatar')}
+              title="アバター"
+            >🧑</button>
+            <button
+              className={`${styles.rightTabBtn} ${rightTab === 'collection' ? styles.rightTabBtnActive : ''}`}
+              onClick={() => switchRightTab('collection')}
+              title="学習コレクション"
+            >📚</button>
+          </div>
+
+          {/* タブコンテンツ */}
+          <div className={styles.rightContent}>
+            {rightTab === 'avatar' ? (
+              <AvatarLayer
+                motion={motion}
+                avatarPath={settings.avatarPath}
+                reducedMotion={settings.reducedMotion}
+              />
+            ) : (
+              <CollectionPanel maxCollections={settings.maxCollections ?? 10} />
+            )}
+          </div>
         </div>
       </div>
 
