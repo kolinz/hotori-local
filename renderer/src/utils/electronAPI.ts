@@ -68,6 +68,7 @@ const fallback: ElectronAPI = {
     ollamaUrl: 'http://localhost:11434',
     openaiApiKey: '', openaiModels: [], openaiBaseUrl: 'https://api.openai.com',
     difyUrl: 'https://api.dify.ai/v1', difyApiKey: '',
+    geminiApiKey: '', geminiModels: [], geminiBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/',  // v0.2.3追加
     avatarPath: '', backgroundImagePath: '',
     theme: 'auto', distance: 'tutor', reducedMotion: false,
     defaultModel: 'gemma3:1b', streamTimeout: 60,
