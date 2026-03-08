@@ -121,16 +121,24 @@ export const GEMINI_PRESET_MODELS: string[] = [   // v0.2.3追加
 
 export const DEFAULT_SETTINGS: AppSettings = {
   connectionMode: 'ollama',
+  defaultModel: 'gemma3:1b',
   ollamaUrl: 'http://localhost:11434',
-  openaiApiKey: '', openaiModels: ['gpt-5-nano-2025-08-07', 'gpt-4.1-nano-2025-04-14'],
+  openaiApiKey: '',
+  openaiModels: ['gpt-5-nano-2025-08-07', 'gpt-4.1-nano-2025-04-14'],
   openaiBaseUrl: 'https://api.openai.com',
   difyUrl: 'https://api.dify.ai/v1', difyApiKey: '',
-  geminiApiKey: '', geminiModels: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],  // v0.2.3追加
-  geminiBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/',              // v0.2.3追加
-  avatarPath: '', backgroundImagePath: '',
-  theme: 'auto', distance: 'tutor', reducedMotion: false,
-  defaultModel: 'gemma3:1b', streamTimeout: 60,
-  toneTagEnabled: true, enabledMotions: [...ALL_MOTIONS],
-  understandingWordsEnabled: true, understandingWords: [...DEFAULT_UNDERSTANDING_WORDS],
+  geminiApiKey: '',
+  geminiModels: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+  geminiBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/',
+  avatarPath: '', 
+  backgroundImagePath: '',
+  theme: 'auto',
+  distance: 'tutor',
+  reducedMotion: false,
+  streamTimeout: 60,
+  toneTagEnabled: false,
+  enabledMotions: [...ALL_MOTIONS],
+  understandingWordsEnabled: true,
+  nderstandingWords: [...DEFAULT_UNDERSTANDING_WORDS],
   maxCollections: 10,
 }
