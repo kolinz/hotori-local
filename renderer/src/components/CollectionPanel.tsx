@@ -9,18 +9,14 @@ interface Props {
 // ─── コレクション追加ポップアップ（Chat.tsx から使う外部コンポーネント） ───────
 interface AddToCollectionPopupProps {
   collections: MixingCollection[]
-  maxCollections: number
   onSelect: (collectionId: string) => void
-  onCreateAndSelect: (name: string) => void
   onClose: () => void
   anchorRef: React.RefObject<HTMLElement>
 }
 
 export function AddToCollectionPopup({
-  collections, maxCollections, onSelect, onCreateAndSelect, onClose, anchorRef,
+  collections, onSelect, onClose, anchorRef,
 }: AddToCollectionPopupProps) {
-  const [creating, setCreating] = useState(false)
-  const [newName, setNewName]   = useState('')
   const popupRef = useRef<HTMLDivElement>(null)
 
   // 外側クリックで閉じる
@@ -35,20 +31,10 @@ export function AddToCollectionPopup({
     return () => document.removeEventListener('mousedown', handler)
   }, [onClose, anchorRef])
 
-  const handleCreate = () => {
-    const name = newName.trim()
-    if (!name) return
-    onCreateAndSelect(name)
-    setNewName('')
-    setCreating(false)
-  }
-
-  const atMax = collections.length >= maxCollections
-
   return (
     <div ref={popupRef} className={styles.popup}>
       <div className={styles.popupTitle}>📚 コレクションに追加</div>
-      {collections.length === 0 && !creating && (
+      {collections.length === 0 && (
         <div className={styles.popupEmpty}>コレクションがありません</div>
       )}
       {collections.map(c => (
@@ -56,28 +42,6 @@ export function AddToCollectionPopup({
           📚 {c.name}
         </button>
       ))}
-      {creating ? (
-        <div className={styles.popupCreateRow}>
-          <input
-            autoFocus
-            className={styles.popupInput}
-            placeholder="例: 数学、英語、React基礎"
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') setCreating(false) }}
-          />
-          <button className={styles.popupCreateBtn} onClick={handleCreate}>追加</button>
-        </div>
-      ) : (
-        <button
-          className={styles.popupNewBtn}
-          onClick={() => setCreating(true)}
-          disabled={atMax}
-          title={atMax ? `コレクションは最大${maxCollections}件です` : '新しいコレクションを作成'}
-        >
-          ＋ 新規コレクション
-        </button>
-      )}
     </div>
   )
 }

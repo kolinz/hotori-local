@@ -75,7 +75,6 @@ export function Chat({
   const toneTagEnabled            = settings.toneTagEnabled ?? true
   const enabledMotions            = settings.enabledMotions ?? undefined
   const understandingWordsEnabled = settings.understandingWordsEnabled ?? true
-  const maxCollections            = settings.maxCollections ?? 10
 
   const isDify = settings.connectionMode === 'dify'
 
@@ -308,28 +307,6 @@ export function Chat({
     }
   }, [collectionPopup, sessionId, sessionCreated])
 
-  const handleCreateAndSelect = useCallback(async (name: string) => {
-    if (!collectionPopup || !sessionCreated) return
-    const collections = await api.listCollections()
-    if (collections.length >= maxCollections) {
-      setAddToast(`⚠️ コレクションは最大${maxCollections}件です`)
-      setTimeout(() => setAddToast(null), 2500)
-      setCollectionPopup(null)
-      return
-    }
-    const newCol = await api.createCollection(name)
-    setCollectionPopup(null)
-    try {
-      await api.addPair(newCol.id, sessionId, collectionPopup.userMsgId, collectionPopup.assistantMsgId)
-      const updated = await api.listCollections()
-      setCollections(updated)
-      setAddToast(`📚 「${name}」を作成して追加しました`)
-      setTimeout(() => setAddToast(null), 2500)
-    } catch {
-      setAddToast('⚠️ 追加に失敗しました')
-      setTimeout(() => setAddToast(null), 2500)
-    }
-  }, [collectionPopup, sessionId, sessionCreated, maxCollections])
 
   const showAvatarMsg = !isStreaming && !!avatarMessage
 
@@ -420,9 +397,7 @@ export function Chat({
                   {collectionPopup?.assistantMsgId === msg.id && (
                     <AddToCollectionPopup
                       collections={collections}
-                      maxCollections={maxCollections}
                       onSelect={handleCollectionSelect}
-                      onCreateAndSelect={handleCreateAndSelect}
                       onClose={() => setCollectionPopup(null)}
                       anchorRef={{ current: collectionBtnRefs.current.get(msg.id) ?? null } as React.RefObject<HTMLElement>}
                     />
