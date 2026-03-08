@@ -52,6 +52,12 @@ app.whenReady().then(async () => {
     if (!settings.avatarPath && fs.existsSync(defaultAvatarPath)) {
       saveSettings({ ...settings, avatarPath: defaultAvatarPath })
     }
+    const defaultBgPath = app.isPackaged
+      ? path.join(process.resourcesPath, 'assets', 'bg', 'background-image-01.png')
+      : path.join(app.getAppPath(), 'assets', 'bg', 'background-image-01.png')
+    if (!settings.backgroundImagePath && fs.existsSync(defaultBgPath)) {
+      saveSettings({ ...settings, backgroundImagePath: defaultBgPath })
+    }
   } catch {}
 
   createWindow()
