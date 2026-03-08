@@ -21,6 +21,22 @@ export function OllamaGuide({ connectionMode = 'ollama' }: Props) {
     )
   }
 
+  if (connectionMode === 'gemini') {  // v0.2.3追加
+    return (
+      <div className={styles.guide}>
+        <div className={styles.icon}>⚠️</div>
+        <h3 className={styles.title}>Gemini の設定が完了していません</h3>
+        <p className={styles.text}>設定画面（⚙️）から以下を設定してください：</p>
+        <ol className={styles.steps}>
+          <li><a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">Google AI Studio</a> でAPIキーを取得</li>
+          <li>APIキーを入力（<code>AIza...</code> 形式）</li>
+          <li>使用するモデルを1つ以上登録（例: <code>gemini-2.5-flash</code>）</li>
+          <li>保存ボタンを押す</li>
+        </ol>
+      </div>
+    )
+  }
+
   return (
     <div className={styles.guide}>
       <div className={styles.icon}>⚠️</div>
