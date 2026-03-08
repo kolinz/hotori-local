@@ -139,6 +139,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   toneTagEnabled: false,
   enabledMotions: [...ALL_MOTIONS],
   understandingWordsEnabled: true,
-  nderstandingWords: [...DEFAULT_UNDERSTANDING_WORDS],
+  understandingWords: [...DEFAULT_UNDERSTANDING_WORDS],
   maxCollections: 10,
 }
