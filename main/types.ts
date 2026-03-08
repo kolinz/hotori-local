@@ -39,7 +39,7 @@ export type IPCKey = keyof typeof IPC
 export type Distance = 'friend' | 'tutor' | 'buddy' | 'calm' | 'cheerful'
 export type MotionName = 'neutral' | 'think' | 'explain' | 'praise' | 'ask'
 export type Rating = 'good' | 'bad' | null
-export type ConnectionMode = 'ollama' | 'openai' | 'dify'
+export type ConnectionMode = 'ollama' | 'openai' | 'dify' | 'gemini'
 
 export interface ChatMessage { role: 'system' | 'user' | 'assistant'; content: string }
 
@@ -94,6 +94,7 @@ export interface AppSettings {
   ollamaUrl: string
   openaiApiKey: string; openaiModels: string[]; openaiBaseUrl: string
   difyUrl: string; difyApiKey: string
+  geminiApiKey: string; geminiModels: string[]; geminiBaseUrl: string  // v0.2.3追加
   avatarPath: string; backgroundImagePath: string
   theme: 'light' | 'dark' | 'auto'
   distance: Distance; reducedMotion: boolean
@@ -114,12 +115,18 @@ export const OPENAI_PRESET_MODELS: string[] = [
   'gpt-5-nano-2025-08-07', 'gpt-4.1-nano-2025-04-14', 'gpt-4o', 'gpt-4o-mini',
 ]
 
+export const GEMINI_PRESET_MODELS: string[] = [   // v0.2.3追加
+  'gemini-2.5-flash', 'gemini-2.5-flash-lite',
+]
+
 export const DEFAULT_SETTINGS: AppSettings = {
   connectionMode: 'ollama',
   ollamaUrl: 'http://localhost:11434',
   openaiApiKey: '', openaiModels: ['gpt-5-nano-2025-08-07', 'gpt-4.1-nano-2025-04-14'],
   openaiBaseUrl: 'https://api.openai.com',
   difyUrl: 'https://api.dify.ai/v1', difyApiKey: '',
+  geminiApiKey: '', geminiModels: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],  // v0.2.3追加
+  geminiBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/',              // v0.2.3追加
   avatarPath: '', backgroundImagePath: '',
   theme: 'auto', distance: 'tutor', reducedMotion: false,
   defaultModel: 'gemma3:1b', streamTimeout: 60,
