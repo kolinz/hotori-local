@@ -1,7 +1,7 @@
 {
   "name": "learning-assistant-hotori",
   "version": "0.2.3",
-  "description": "AI-powered Learning assistant and RAG-to-SFT pipeline tool. Supports Ollama, OpenAI, and Dify.",
+  "description": "AI learning assistant that converts LLM chats into learning collections and SFT-ready datasets. Supports Ollama, OpenAI, Gemini, and Dify.",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "concurrently -k \"npm run dev:vite\" \"npm run dev:electron\"",
