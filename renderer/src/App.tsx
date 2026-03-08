@@ -114,13 +114,17 @@ export default function App() {
       const openaiModels = settings.openaiModels ?? []
       setModels(openaiModels)
       setOllamaOnline(openaiModels.length > 0 ? true : null)
+    } else if (settings.connectionMode === 'gemini') {  // v0.2.3追加
+      const geminiModels = settings.geminiModels ?? []
+      setModels(geminiModels)
+      setOllamaOnline(geminiModels.length > 0 && !!settings.geminiApiKey ? true : null)
     } else if (settings.connectionMode === 'dify') {
       setModels([])
       setOllamaOnline(!!settings.difyApiKey ? true : null)
     } else {
       api.listModels().then(m => { setModels(m); setOllamaOnline(m.length > 0) })
     }
-  }, [settings?.connectionMode, settings?.openaiModels, settings?.ollamaUrl, settings?.difyApiKey])
+  }, [settings?.connectionMode, settings?.openaiModels, settings?.ollamaUrl, settings?.difyApiKey, settings?.geminiApiKey, settings?.geminiModels])
 
   // ── 背景画像 ──
   useEffect(() => {
@@ -135,6 +139,10 @@ export default function App() {
     if (next.connectionMode === 'openai') {
       setModels(next.openaiModels ?? [])
       setOllamaOnline((next.openaiModels ?? []).length > 0 ? true : null)
+    } else if (next.connectionMode === 'gemini') {  // v0.2.3追加
+      const geminiModels = next.geminiModels ?? []
+      setModels(geminiModels)
+      setOllamaOnline(geminiModels.length > 0 && !!next.geminiApiKey ? true : null)
     } else if (next.connectionMode === 'dify') {
       setModels([])
       setOllamaOnline(!!next.difyApiKey ? true : null)
@@ -238,14 +246,20 @@ export default function App() {
   const openaiModels   = settings.openaiModels ?? []
   const openaiApiKey   = settings.openaiApiKey ?? ''
   const difyApiKey     = settings.difyApiKey ?? ''
+  const geminiModels   = settings.geminiModels ?? []    // v0.2.3追加
+  const geminiApiKey   = settings.geminiApiKey ?? ''    // v0.2.3追加
 
   const isOffline =
-    connectionMode === 'openai' ? openaiModels.length === 0 || !openaiApiKey
-    : connectionMode === 'dify' ? !difyApiKey
+    connectionMode === 'openai'  ? openaiModels.length === 0 || !openaiApiKey
+    : connectionMode === 'gemini' ? geminiModels.length === 0 || !geminiApiKey  // v0.2.3追加
+    : connectionMode === 'dify'   ? !difyApiKey
     : ollamaOnline === false
 
-  const resolvedSettings = connectionMode === 'openai'
-    ? { ...settings, defaultModel: openaiModels[0] ?? settings.defaultModel }
+  const resolvedSettings =
+    connectionMode === 'openai'
+      ? { ...settings, defaultModel: openaiModels[0] ?? settings.defaultModel }
+    : connectionMode === 'gemini'                                                // v0.2.3追加
+      ? { ...settings, defaultModel: geminiModels[0] ?? settings.defaultModel }
     : settings
 
   return (

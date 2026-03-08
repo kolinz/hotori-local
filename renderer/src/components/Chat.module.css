@@ -234,7 +234,7 @@
   border-bottom-right-radius: 4px;
   background: rgba(167, 139, 250, 0.15);
   border: 1px dashed rgba(167, 139, 250, 0.5);
-  color: #1a1730;
+  color: #ffffff;
   font-size: var(--font-size-sm);
   line-height: 1.55;
   backdrop-filter: blur(12px);

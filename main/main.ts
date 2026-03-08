@@ -4,6 +4,7 @@ import fs from 'fs'
 import { IPC, ChatStartPayload, ChatAbortPayload, Session, Message, AppSettings } from './types'
 import { streamChat, listModels } from './ollama'
 import { streamChatOpenAI } from './openai'
+import { streamChatGemini } from './gemini'  // v0.2.3追加
 import { streamDifyChat } from './dify'
 import {
   initStore, createSession, appendMessage, listSessions, getSession,
@@ -89,6 +90,10 @@ ipcMain.on(IPC.CHAT_START, async (event, payload: ChatStartPayload) => {
     const baseUrl = settings.openaiBaseUrl || 'https://api.openai.com'
     const apiKey  = settings.openaiApiKey || ''
     await streamChatOpenAI(baseUrl, apiKey, model, messages, callbacks, controller.signal, settings.streamTimeout * 1000)
+  } else if (settings.connectionMode === 'gemini') {  // v0.2.3追加
+    const baseUrl = settings.geminiBaseUrl || 'https://generativelanguage.googleapis.com/v1beta/'
+    const apiKey  = settings.geminiApiKey || ''
+    await streamChatGemini(baseUrl, apiKey, model, messages, callbacks, controller.signal, settings.streamTimeout * 1000)
   } else if (settings.connectionMode === 'dify') {
     const difyUrl = settings.difyUrl || 'https://api.dify.ai/v1'
     const apiKey  = settings.difyApiKey || ''
@@ -109,6 +114,7 @@ ipcMain.on(IPC.CHAT_ABORT, (_e, payload: ChatAbortPayload) => {
 ipcMain.handle(IPC.MODELS_LIST, async () => {
   const settings = loadSettings()
   if (settings.connectionMode === 'openai') return settings.openaiModels ?? []
+  if (settings.connectionMode === 'gemini') return settings.geminiModels ?? []  // v0.2.3追加
   if (settings.connectionMode === 'dify')   return []
   return listModels(settings.ollamaUrl || 'http://localhost:11434')
 })

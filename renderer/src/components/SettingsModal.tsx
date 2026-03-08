@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api, AppSettings } from '../utils/electronAPI'
 import type { Distance, MotionName, ConnectionMode } from '../../../main/types'
-import { ALL_MOTIONS, DEFAULT_UNDERSTANDING_WORDS, OPENAI_PRESET_MODELS } from '../../../main/types'
+import { ALL_MOTIONS, DEFAULT_UNDERSTANDING_WORDS, OPENAI_PRESET_MODELS, GEMINI_PRESET_MODELS } from '../../../main/types'
 import styles from './Modal.module.css'
 
 interface Props {
@@ -26,6 +26,7 @@ const MOTION_LABELS: Record<MotionName, string> = {
 const CONNECTION_MODES: { value: ConnectionMode; label: string; desc: string }[] = [
   { value: 'ollama', label: '🦙 Ollama', desc: 'ローカルLLM（オフライン動作）' },
   { value: 'openai', label: '🤖 OpenAI', desc: 'ChatGPT API / OpenAI互換API' },
+  { value: 'gemini', label: '✨ Gemini', desc: 'Google Gemini API' },  // v0.2.3追加
   { value: 'dify',   label: '⚡ Dify',   desc: 'Dify API（RAG・Agent対応）' },
 ]
 
@@ -33,6 +34,9 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
   const [draft, setDraft] = useState<AppSettings>({
     difyUrl: 'https://api.dify.ai/v1',
     difyApiKey: '',
+    geminiApiKey: '',                                                          // v0.2.3追加
+    geminiModels: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],             // v0.2.3追加
+    geminiBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/',       // v0.2.3追加
     maxCollections: 10,
     ...settings,
   })
@@ -40,6 +44,8 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
   const [newModel, setNewModel]       = useState('')
   const [showApiKey, setShowApiKey]   = useState(false)
   const [showDifyKey, setShowDifyKey] = useState(false)
+  const [showGeminiKey, setShowGeminiKey] = useState(false)  // v0.2.3追加
+  const [newGeminiModel, setNewGeminiModel] = useState('')   // v0.2.3追加
 
   // ── 理解・納得ワード ──
   const handleAddWord = () => {
@@ -75,6 +81,24 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
     setDraft(d => ({ ...d, openaiModels: [...current, model] }))
   }
 
+  // ── Gemini モデル管理（v0.2.3追加）──
+  const handleAddGeminiModel = () => {
+    const m = newGeminiModel.trim()
+    if (!m) return
+    const current = draft.geminiModels ?? []
+    if (current.includes(m)) { setNewGeminiModel(''); return }
+    setDraft(d => ({ ...d, geminiModels: [...current, m] }))
+    setNewGeminiModel('')
+  }
+  const handleRemoveGeminiModel = (model: string) => {
+    setDraft(d => ({ ...d, geminiModels: (d.geminiModels ?? []).filter(m => m !== model) }))
+  }
+  const handleAddGeminiPresetModel = (model: string) => {
+    const current = draft.geminiModels ?? []
+    if (current.includes(model)) return
+    setDraft(d => ({ ...d, geminiModels: [...current, model] }))
+  }
+
   // ── アバター ──
   const handleAvatarPick = async () => {
     const folder = await api.openFolderDialog()
@@ -100,8 +124,10 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
 
   const enabledMotions = draft.enabledMotions ?? [...ALL_MOTIONS]
   const openaiModels   = draft.openaiModels ?? []
+  const geminiModels   = draft.geminiModels ?? []   // v0.2.3追加
   const isOllama = draft.connectionMode === 'ollama' || !draft.connectionMode
   const isOpenAI = draft.connectionMode === 'openai'
+  const isGemini = draft.connectionMode === 'gemini'  // v0.2.3追加
   const isDify   = draft.connectionMode === 'dify'
 
   return (
@@ -118,15 +144,16 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
           <Section title="🔗 接続設定">
             <div className={styles.row}>
               <span className={styles.label}>接続モード</span>
-              <select
-                className={styles.select}
-                value={draft.connectionMode}
-                onChange={e => setDraft(d => ({ ...d, connectionMode: e.target.value as ConnectionMode }))}
-              >
+              <div className={styles.distanceGrid}>
                 {CONNECTION_MODES.map(m => (
-                  <option key={m.value} value={m.value}>{m.label} — {m.desc}</option>
+                  <button
+                    key={m.value}
+                    className={`${styles.distanceBtn} ${draft.connectionMode === m.value ? styles.selected : ''}`}
+                    onClick={() => setDraft(d => ({ ...d, connectionMode: m.value as ConnectionMode }))}
+                    title={m.desc}
+                  >{m.label}</button>
                 ))}
-              </select>
+              </div>
             </div>
 
             {isOllama && (
@@ -207,6 +234,83 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                     spellCheck={false}
                   />
                   <button className={styles.wordAddBtn} onClick={handleAddModel}>追加</button>
+                </div>
+              </>
+            )}
+
+            {/* ── Gemini設定（v0.2.3追加）── */}
+            {isGemini && (
+              <>
+                <div className={styles.row}>
+                  <span className={styles.label}>エンドポイント URL</span>
+                  <input
+                    className={styles.textInput}
+                    value={draft.geminiBaseUrl ?? ''}
+                    onChange={e => setDraft(d => ({ ...d, geminiBaseUrl: e.target.value }))}
+                    placeholder="https://generativelanguage.googleapis.com/v1beta/"
+                    spellCheck={false}
+                  />
+                </div>
+                <p className={styles.hint}>
+                  Googleのエンドポイントが変更された場合はここを修正してください。
+                </p>
+                <div className={styles.row}>
+                  <span className={styles.label}>API キー</span>
+                  <div className={styles.apiKeyRow}>
+                    <input
+                      className={styles.textInput}
+                      type={showGeminiKey ? 'text' : 'password'}
+                      value={draft.geminiApiKey ?? ''}
+                      onChange={e => setDraft(d => ({ ...d, geminiApiKey: e.target.value }))}
+                      placeholder="AIza..."
+                      spellCheck={false}
+                      autoComplete="off"
+                    />
+                    <button className={styles.toggleVisBtn} onClick={() => setShowGeminiKey(v => !v)}>
+                      {showGeminiKey ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                </div>
+                <p className={styles.hint}>
+                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">
+                    Google AI Studio
+                  </a> からAPIキーを取得してください。
+                </p>
+                <div className={styles.label} style={{ marginTop: 12, marginBottom: 8 }}>使用するモデル</div>
+                <div className={styles.wordChips}>
+                  {geminiModels.length === 0 && (
+                    <span className={styles.hint}>モデルが登録されていません</span>
+                  )}
+                  {geminiModels.map(m => (
+                    <span key={m} className={styles.wordChip}>
+                      {m}
+                      <button className={styles.wordChipRemove} onClick={() => handleRemoveGeminiModel(m)} title="削除">✕</button>
+                    </span>
+                  ))}
+                </div>
+                <div className={styles.presetRow}>
+                  <span className={styles.hint} style={{ marginRight: 4 }}>プリセット:</span>
+                  {GEMINI_PRESET_MODELS.map(m => (
+                    <button
+                      key={m}
+                      className={`${styles.presetBtn} ${geminiModels.includes(m) ? styles.presetBtnAdded : ''}`}
+                      onClick={() => handleAddGeminiPresetModel(m)}
+                      disabled={geminiModels.includes(m)}
+                      title={geminiModels.includes(m) ? '追加済み' : m}
+                    >{m}</button>
+                  ))}
+                </div>
+                <div className={styles.wordAddRow} style={{ marginTop: 8 }}>
+                  <input
+                    className={styles.wordInput}
+                    type="text"
+                    placeholder="モデル名を追加（例: gemini-2.5-pro）"
+                    value={newGeminiModel}
+                    onChange={e => setNewGeminiModel(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddGeminiModel() } }}
+                    spellCheck={false}
+                  />
+                  <button className={styles.wordAddBtn} onClick={handleAddGeminiModel}>追加</button>
                 </div>
               </>
             )}
