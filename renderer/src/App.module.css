@@ -1,3 +1,5 @@
+/* App.module.css v0.2.2 */
+
 /* ── ルート ── */
 .root {
   position: relative;
@@ -72,18 +74,78 @@
   flex-direction: column;
 }
 
-/* ── 右: アバター ── */
-.avatarPane {
+/* ── リサイザー ── */
+.resizer {
   flex-shrink: 0;
-  width: 220px;   /* 縦横比1:3の画像 → 高さ約660px想定で幅220px */
-  position: relative;
-  overflow: hidden;
+  width: 5px;
+  background: transparent;
   border-left: 1px solid var(--border);
+  cursor: col-resize;
+  transition: background 0.15s;
+  z-index: 5;
+}
+.resizer:hover,
+.resizer:active {
+  background: rgba(139, 92, 246, 0.3);
 }
 
-/* 小さい画面ではアバターを非表示 */
+/* ── 右: アバター + コレクション ── */
+.rightPane {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+  position: relative;
+}
+
+/* 縦タブバー */
+.rightTabBar {
+  flex-shrink: 0;
+  width: 36px;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.rightTabBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: none;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background 0.15s, color 0.15s;
+}
+.rightTabBtn:hover {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+.rightTabBtnActive {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+/* タブコンテンツ */
+.rightContent {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 小さい画面では右ペインを非表示 */
 @media (max-width: 700px) {
-  .avatarPane { display: none; }
+  .rightPane  { display: none; }
+  .resizer    { display: none; }
 }
 
 /* ── タブバー ── */
@@ -115,23 +177,21 @@
   transition: background 0.15s;
   flex-shrink: 0;
 }
-.tab:hover { background: var(--bg-panel); }
+.tab:hover { background: var(--accent-soft); }
 
 .tabActive {
   background: var(--bg-panel);
   border-color: var(--accent);
   border-bottom: 1px solid var(--bg-panel);
-  margin-bottom: -1px;
 }
 
 .tabTitle {
-  font-size: 11px;
+  flex: 1;
+  font-size: 12px;
   color: var(--text-secondary);
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;
-  min-width: 0;
+  white-space: nowrap;
 }
 .tabActive .tabTitle { color: var(--text-primary); }
 
@@ -139,29 +199,15 @@
   flex-shrink: 0;
   width: 16px;
   height: 16px;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--text-muted);
+  border-radius: 3px;
+  background: none;
+  color: var(--text-secondary);
   font-size: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
 }
-.tabClose:hover { background: rgba(239,68,68,0.2); color: #f87171; }
-
-.tabAdd {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px 6px 0 0;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  align-self: flex-end;
-  transition: color 0.15s, background 0.15s;
-}
-.tabAdd:hover { color: var(--accent); background: var(--accent-soft); }
+.tab:hover .tabClose { opacity: 1; }
+.tabClose:hover { background: rgba(248, 113, 113, 0.2); color: #f87171; }

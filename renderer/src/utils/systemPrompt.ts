@@ -8,7 +8,7 @@ import type { Distance } from '../../../main/types'
  */
 export function buildSystemPrompt(distance: Distance, toneTagEnabled = true): string {
   const toneTagInstruction = toneTagEnabled
-    ? `- 応答の最後に **必ず** 1つだけ \`<toneTag name="neutral|think|explain|praise|ask" />\` を付ける。`
+    ? `- 応答の最後に **必ず** 1つだけ toneTag を出力する。形式: <toneTag name="MOTION" /> （MOTION は neutral / think / explain / praise / ask のいずれか1つ）`
     : `- toneTag は出力しない。`
 
   return `あなたは"学習支援に特化したAIコーチ"です。以下を厳守してください：
