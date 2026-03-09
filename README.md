@@ -86,7 +86,7 @@ Chatbot アプリタイプ・Agent アプリタイプのどちらにも対応。
 - Ollama 動作確認済みモデル: `llama3.2:3b`, `gemma3:1b`, `gemma3:4b`, `qwen3:0.6b`, `qwen3:1.7b`, 
 - OpenAI API キー（OpenAI のモデルを使いたい場合のみ）
 - Gemini API キー（Gemini のモデルを使いたい場合のみ。[Google AI Studio](https://aistudio.google.com/app/apikey) で取得）
-- Dify環境（ RAG-to-SFT の学習データ作成を行う場合に必須 , DifyのSaas版もしくはセルフホスト）
+- Dify環境（RAG-to-SFT の学習データ作成を行う場合に必須 , DifyのSaas版もしくはセルフホスト）
 
 ### ソースコードを使って動かす場合
 - Node.js 20+
@@ -94,7 +94,7 @@ Chatbot アプリタイプ・Agent アプリタイプのどちらにも対応。
 - Ollama 動作確認済みモデル: `llama3.2:3b`, `gemma3:1b`, `qwen3:0.6b`, `qwen3:1.7b`, `gemma3:4b`
 - OpenAI API キー（OpenAI のモデルを使いたい場合のみ）
 - Gemini API キー（Gemini のモデルを使いたい場合のみ。[Google AI Studio](https://aistudio.google.com/app/apikey) で取得）
-- Dify環境（ RAG-to-SFT の学習データ作成を行う場合は必要。RAGSaas版もしくはセルフホスト）
+- Dify環境（RAG-to-SFT の学習データ作成を行う場合に必須 , DifyのSaas版もしくはセルフホスト）
 
 ## ソースコードを使って動かす場合のセットアップ
 
