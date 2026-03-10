@@ -1,6 +1,6 @@
 # 学習アシスタントツール兼マルチ教師蒸留ツール Hotori
 
-<img src="https://github.com/kolinz/hotori-local/blob/main/assets/bg/background-image-01.png" width="50%" />
+<img src="https://github.com/kolinz/hotori-local/blob/main/assets/bg/background-image-01.png" width="90%" />
 
 Hotori は Electron + React で作られたデスクトップ学習アシスタントです。
 ローカル LLM（Ollama）・OpenAI API・Gemini API・Dify API の 4 モードに対応し、チャットUIの背景画像のカスタマイズにより、AIを使った学習をサポートします。
