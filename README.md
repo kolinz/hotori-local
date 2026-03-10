@@ -81,16 +81,16 @@ Chatbot アプリタイプ・Agent アプリタイプのどちらにも対応。
 
 ### Windows 向けアプリを使う場合
 - `release-learning-assistant-horori-win-0.2.4.zip` をダウンロードし、Zip ファイルを展開してください。その後、`学習アシスタント Hotori Setup 0.2.4.exe` を実行してください。
-- [Ollama](https://ollama.com/)（起動済み）
-- Ollama 動作確認済みモデル: `llama3.2:3b`, `gemma3:1b`, `gemma3:4b`, `qwen3:0.6b`, `qwen3:1.7b`, `phi4-mini:latest`
+- [Ollama](https://ollama.com/)（インストール必須）
+  - Ollama 動作確認済みモデル: `llama3.2:3b`, `gemma3:1b`, `gemma3:4b`, `qwen3:0.6b`, `qwen3:1.7b`, `phi4-mini:latest`
 - OpenAI API キー（OpenAI のモデルを使いたい場合のみ）
 - Gemini API キー（Gemini のモデルを使いたい場合のみ。[Google AI Studio](https://aistudio.google.com/app/apikey) で取得）
 - Dify環境（RAG-to-SFT の学習データ作成を行う場合に必須 , DifyのSaas版もしくはセルフホスト）
 
 ### ソースコードを使って動かす場合
-- Node.js 20+
-- [Ollama](https://ollama.com/)（起動済み）
-- Ollama 動作確認済みモデル: `llama3.2:3b`, `gemma3:1b`, `gemma3:4b`, `qwen3:0.6b`, `qwen3:1.7b`, `phi4-mini:latest`
+- Node.js 22+
+- [Ollama](https://ollama.com/)（インストール必須）
+  - Ollama 動作確認済みモデル: `llama3.2:3b`, `gemma3:1b`, `gemma3:4b`, `qwen3:0.6b`, `qwen3:1.7b`, `phi4-mini:latest`
 - OpenAI API キー（OpenAI のモデルを使いたい場合のみ）
 - Gemini API キー（Gemini のモデルを使いたい場合のみ。[Google AI Studio](https://aistudio.google.com/app/apikey) で取得）
 - Dify環境（RAG-to-SFT の学習データ作成を行う場合に必須 , DifyのSaas版もしくはセルフホスト）
