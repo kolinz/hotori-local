@@ -96,7 +96,7 @@ Chatbot アプリタイプ・Agent アプリタイプのどちらにも対応。
 - Dify環境（RAG-to-SFT の学習データ作成を行う場合に必須 , DifyのSaas版もしくはセルフホスト）
 
 ## ソースコードを使って動かす場合のセットアップ
-
+ターミナルアプリやPowerShellを使って下記のコマンドを実行してください
 ```bash
 git clone https://github.com/kolinz/hotori-local.git
 cd hotori-local
@@ -105,8 +105,7 @@ npm run dev
 ```
 
 ## ビルド・配布 (Windows)
-
-Windows 環境では、ターミナルアプリを「管理者として実行」を行ってください。
+ターミナルアプリやPowerShellを使って下記のコマンドを実行してください
 ```bash
 npm run dist:win
 ```
