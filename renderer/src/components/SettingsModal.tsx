@@ -38,6 +38,7 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
     geminiModels: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],             // v0.2.3追加
     geminiBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/',       // v0.2.3追加
     maxCollections: 10,
+    distanceEnabled: false,  // v0.2.4追加
     ...settings,
   })
   const [newWord, setNewWord]         = useState('')
@@ -453,17 +454,32 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
 
           {/* ── 距離感 ── */}
           <Section title="💬 距離感（AIのトーン）">
-            <div className={styles.distanceGrid}>
-              {DISTANCES.map(d => (
-                <button
-                  key={d.value}
-                  className={`${styles.distanceBtn} ${draft.distance === d.value ? styles.selected : ''}`}
-                  onClick={() => setDraft(prev => ({ ...prev, distance: d.value }))}
-                  title={d.desc}
-                >{d.label}</button>
-              ))}
-            </div>
-            <p className={styles.hint}>現在: {DISTANCES.find(d => d.value === draft.distance)?.desc}</p>
+            <label className={styles.toggle}>
+              <input
+                type="checkbox"
+                checked={draft.distanceEnabled ?? false}
+                onChange={e => setDraft(d => ({ ...d, distanceEnabled: e.target.checked }))}
+              />
+              <span>距離感 → システムプロンプトへの反映を有効にする</span>
+            </label>
+            <p className={styles.hint} style={{ marginTop: 6, marginBottom: 14 }}>
+              オンにすると、選択した距離感がシステムプロンプトに反映されます。
+            </p>
+            {(draft.distanceEnabled ?? false) && (
+              <>
+                <div className={styles.distanceGrid}>
+                  {DISTANCES.map(d => (
+                    <button
+                      key={d.value}
+                      className={`${styles.distanceBtn} ${draft.distance === d.value ? styles.selected : ''}`}
+                      onClick={() => setDraft(prev => ({ ...prev, distance: d.value }))}
+                      title={d.desc}
+                    >{d.label}</button>
+                  ))}
+                </div>
+                <p className={styles.hint}>現在: {DISTANCES.find(d => d.value === draft.distance)?.desc}</p>
+              </>
+            )}
           </Section>
 
           {/* ── テーマ ── */}

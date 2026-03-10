@@ -12,6 +12,7 @@ import {
   // v0.2.2追加
   listCollections, createCollection, renameCollection, deleteCollection,
   listPairs, addPair, removePair, reorderPairs, exportCollectionCsv,
+  reviewPair,  // v0.2.4追加
 } from './store'
 import { loadSettings, saveSettings } from './settings'
 
@@ -210,6 +211,11 @@ ipcMain.handle(IPC.COLLECTION_REMOVE_PAIR, (_e, pairId: string) => removePair(pa
 ipcMain.handle(IPC.COLLECTION_REORDER, (_e, collectionId: string, orderedIds: string[]) =>
   reorderPairs(collectionId, orderedIds)
 )
+// v0.2.4追加: 要確認フラグ
+ipcMain.handle(IPC.COLLECTION_REVIEW_PAIR, (_e, pairId: string, needsReview: boolean) =>
+  reviewPair(pairId, needsReview)
+)
+
 ipcMain.handle(IPC.COLLECTION_EXPORT_CSV, async (_e, collectionId: string, collectionName: string) => {
   if (!mainWindow) return { ok: false, error: 'no window' }
   const pad = (n: number) => String(n).padStart(2, '0')
