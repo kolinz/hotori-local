@@ -130,6 +130,7 @@ npm run dev
 ```bash
 npm run dist:win
 ```
+releaseフォルダの下に、.exeファイルが作成されます。このreleaseフォルダをzip形式等で圧縮して固めて配布できます。
 
 ## アバター設定
 
