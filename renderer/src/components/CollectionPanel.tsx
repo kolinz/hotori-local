@@ -510,7 +510,6 @@ export function CollectionPanel({ maxCollections }: Props) {
         <CollectionPreviewModal
           collectionId={previewFor.id}
           collectionName={previewFor.name}
-          pairs={pairs[previewFor.id] ?? []}
           onClose={() => setPreviewFor(null)}
         />
       )}
@@ -526,8 +525,41 @@ interface PreviewModalProps {
   onClose: () => void
 }
 
-function CollectionPreviewModal({ collectionId, collectionName, pairs, onClose }: PreviewModalProps) {
+function CollectionPreviewModal({ collectionId, collectionName, onClose }: Omit<PreviewModalProps, 'pairs'>) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
+  const [pairs, setPairs] = useState<MixingPair[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const changedIds = useRef<Set<string>>(new Set())
+
+  // マウント時にDBから最新データを取得
+  useEffect(() => {
+    api.listPairs(collectionId).then(p => { setPairs(p); setLoading(false) })
+  }, [collectionId])
+
+  // チェックボックス変更: stateのみ更新（DB保存は「保存」ボタン押下時）
+  const handleToggleReview = (e: React.ChangeEvent<HTMLInputElement>, pairId: string) => {
+    e.stopPropagation()
+    const needsReview = e.target.checked
+    changedIds.current.add(pairId)
+    setPairs(prev => prev.map(p => p.id === pairId ? { ...p, needs_review: needsReview ? 1 : 0 } : p))
+    setSaved(false)
+  }
+
+  // 保存ボタン: 変更分をまとめてDB保存
+  const handleSave = async () => {
+    if (saving) return
+    setSaving(true)
+    for (const pairId of changedIds.current) {
+      const pair = pairs.find(p => p.id === pairId)
+      if (pair) await api.reviewPair(pairId, pair.needs_review === 1)
+    }
+    changedIds.current.clear()
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
 
   // オーバーレイクリックで閉じる
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -541,12 +573,22 @@ function CollectionPreviewModal({ collectionId, collectionName, pairs, onClose }
         <div className={styles.previewHeader}>
           <span className={styles.previewTitle}>📚 {collectionName}</span>
           <span className={styles.previewCount}>{pairs.length}件</span>
+          <button
+            className={styles.previewSaveBtn}
+            onClick={handleSave}
+            disabled={saving || changedIds.current.size === 0}
+            title="要確認フラグの変更を保存"
+          >
+            {saving ? '保存中…' : saved ? '✅ 保存済み' : '💾 保存'}
+          </button>
           <button className={styles.previewClose} onClick={onClose}>✕</button>
         </div>
 
         {/* テーブル */}
         <div className={styles.previewTableWrap}>
-          {pairs.length === 0 ? (
+          {loading ? (
+            <div className={styles.previewEmpty}>読み込み中…</div>
+          ) : pairs.length === 0 ? (
             <div className={styles.previewEmpty}>ペアがありません</div>
           ) : (
             <table className={styles.previewTable}>
@@ -556,6 +598,7 @@ function CollectionPreviewModal({ collectionId, collectionName, pairs, onClose }
                   <th className={styles.thSession}>セッション</th>
                   <th className={styles.thModel}>モデル</th>
                   <th className={styles.thRating}>評価</th>
+                  <th className={styles.thReview}>要確認フラグ</th>
                   <th className={styles.thQ}>Q（ユーザー）</th>
                   <th className={styles.thA}>A（アシスタント）</th>
                 </tr>
@@ -578,6 +621,14 @@ function CollectionPreviewModal({ collectionId, collectionName, pairs, onClose }
                       <td className={styles.tdModel}>{pair.model ?? '—'}</td>
                       <td className={styles.tdRating}>
                         {pair.rating === 'good' ? '👍' : pair.rating === 'bad' ? '👎' : '—'}
+                      </td>
+                      <td className={styles.tdReview} onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={(pair.needs_review ?? 1) === 1}
+                          onChange={e => handleToggleReview(e, pair.id)}
+                          title={(pair.needs_review ?? 1) === 1 ? '要確認（チェックを外すと確認済みに）' : '確認済み（チェックすると要確認に）'}
+                        />
                       </td>
                       <td className={styles.tdQ}>
                         <div className={isExpanded ? styles.cellFull : styles.cellClamp}>

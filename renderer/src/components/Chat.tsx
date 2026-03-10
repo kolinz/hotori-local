@@ -71,17 +71,24 @@ export function Chat({
   const motionTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null)
   const messagesEndRef     = useRef<HTMLDivElement>(null)
   const textareaRef        = useRef<HTMLTextAreaElement>(null)
+  const sessionModeRef     = useRef<typeof settings.connectionMode | null>(null)  // v0.2.4追加
+  const sessionModelsRef   = useRef<string[]>([])  // v0.2.4追加: セッション開始時のモデルリストを固定
 
-  const toneTagEnabled            = settings.toneTagEnabled ?? true
+  const toneTagEnabled            = settings.toneTagEnabled ?? false
   const enabledMotions            = settings.enabledMotions ?? undefined
   const understandingWordsEnabled = settings.understandingWordsEnabled ?? true
+  const distanceEnabled           = settings.distanceEnabled ?? false
 
   const isDify = settings.connectionMode === 'dify'
 
   const resolveModelName = (): string => {
-    if (isDify) return 'Dify'
+    const mode = sessionModeRef.current ?? settings.connectionMode
+    if (mode === 'dify') return 'Dify'
     return selectedModel
   }
+
+  // セッション中の接続モード（表示用）
+  const sessionMode = sessionModeRef.current ?? settings.connectionMode
 
   const resolveTone = useCallback((text: string): { tone: MotionName; clean: string } => {
     if (!toneTagEnabled) {
@@ -157,7 +164,10 @@ export function Chat({
       setMessages(prev => {
         const last = prev[prev.length - 1]
         if (!last || last.role !== 'assistant') return prev
-        return [...prev.slice(0, -1), { ...last, contentClean: `⚠️ エラー: ${p.message}`, isStreaming: false }]
+        const modeHint = sessionModeRef.current !== settings.connectionMode
+          ? '\n\n接続モードがセッション開始時から変更されています。チャットをクリアして新しいセッションを開始してください。'
+          : '\n\n接続モードやAPIキー・モデル名の設定をご確認ください。'
+        return [...prev.slice(0, -1), { ...last, contentClean: `⚠️ エラー: ${p.message}${modeHint}`, isStreaming: false }]
       })
     })
 
@@ -181,6 +191,13 @@ export function Chat({
     const text = input.trim()
     if (!text || isStreaming) return
     await ensureSession()
+
+    // v0.2.4: セッション開始時の接続モード・モデルリストを記録（以降固定）
+    if (sessionModeRef.current === null) {
+      sessionModeRef.current = settings.connectionMode
+      sessionModelsRef.current = models
+    }
+    const currentMode = sessionModeRef.current
 
     if (motionTimerRef.current) { clearTimeout(motionTimerRef.current); motionTimerRef.current = null }
 
@@ -237,10 +254,10 @@ export function Chat({
     currentRequestId.current = requestId
     accumulatedContent.current = ''
 
-    if (isDify) {
+    if (currentMode === 'dify') {
       api.chatStart({ requestId, model: '', distance: settings.distance, messages: [], userQuery: text })
     } else {
-      const systemPrompt = buildSystemPrompt(settings.distance, toneTagEnabled)
+      const systemPrompt = buildSystemPrompt(settings.distance, toneTagEnabled, distanceEnabled)
       const history = messages.map(m => ({ role: m.role, content: m.content }))
       api.chatStart({
         requestId, model: selectedModel, distance: settings.distance,
@@ -268,6 +285,8 @@ export function Chat({
     if (isStreaming) return
     setMessages([])
     setSessionCreated(false)
+    sessionModeRef.current   = null  // v0.2.4: セッションモードをリセット
+    sessionModelsRef.current = []    // v0.2.4: セッションモデルリストをリセット
     onMotionChange('neutral')
     onSessionTitleChange(tabId, '新しいセッション')
     onClearChat?.()
@@ -320,19 +339,28 @@ export function Chat({
   return (
     <div className={styles.chat}>
       <div className={styles.modelBar}>
-        {isDify && <span className={styles.difyBadge}>⚡ Dify</span>}
-        {!isDify && models.length > 1 && (
+        {/* v0.2.4: セッション接続モード（読み取り専用、モデルセレクタと同デザイン） */}
+        {sessionCreated && (
+          <span className={styles.modelSelect} style={{ cursor: 'default', opacity: 0.75 }}>
+            {sessionMode === 'ollama' ? '🦙 Ollama'
+              : sessionMode === 'openai' ? '🤖 OpenAI'
+              : sessionMode === 'gemini' ? '✨ Gemini'
+              : sessionMode === 'dify'   ? '⚡ Dify'
+              : sessionMode}
+          </span>
+        )}
+        {sessionMode !== 'dify' && (sessionCreated ? sessionModelsRef.current : models).length > 1 && (
           <select
             className={styles.modelSelect}
             value={selectedModel}
             onChange={e => setSelectedModel(e.target.value)}
             disabled={isStreaming}
           >
-            {models.map(m => <option key={m} value={m}>{m}</option>)}
+            {(sessionCreated ? sessionModelsRef.current : models).map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         )}
-        {!isDify && models.length === 1 && (
-          <span className={styles.modelLabel}>{models[0]}</span>
+        {sessionMode !== 'dify' && (sessionCreated ? sessionModelsRef.current : models).length === 1 && (
+          <span className={styles.modelLabel}>{(sessionCreated ? sessionModelsRef.current : models)[0]}</span>
         )}
         {messages.length > 0 && !isStreaming && (
           <button className={styles.clearBtn} onClick={clearChat} title="チャットをクリア">
