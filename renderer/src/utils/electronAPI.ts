@@ -42,6 +42,7 @@ export interface ElectronAPI {
   addPair:             (collectionId: string, sessionId: string, userMsgId: string, assistantMsgId: string) => Promise<MixingPair>
   removePair:          (pairId: string) => Promise<void>
   reorderPairs:        (collectionId: string, orderedIds: string[]) => Promise<void>
+  reviewPair:          (pairId: string, needsReview: boolean) => Promise<void>  // v0.2.4追加
   exportCollectionCsv: (collectionId: string, collectionName: string) => Promise<{ ok: boolean; filePath?: string; canceled?: boolean; error?: string }>
 }
 
@@ -70,7 +71,7 @@ const fallback: ElectronAPI = {
     difyUrl: 'https://api.dify.ai/v1', difyApiKey: '',
     geminiApiKey: '', geminiModels: [], geminiBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/',  // v0.2.3追加
     avatarPath: '', backgroundImagePath: '',
-    theme: 'auto', distance: 'tutor', reducedMotion: false,
+    theme: 'auto', distance: 'tutor', distanceEnabled: false, reducedMotion: false,
     defaultModel: 'gemma3:1b', streamTimeout: 60,
     toneTagEnabled: true, enabledMotions: ['neutral', 'think', 'explain', 'praise', 'ask'],
     understandingWordsEnabled: true, understandingWords: [],
@@ -92,6 +93,7 @@ const fallback: ElectronAPI = {
   addPair:             async (_c, _s, _u, _a) => ({ id: '', collection_id: _c, session_id: _s, user_message_id: _u, assistant_message_id: _a, sort_order: 0, added_at: '' }),
   removePair:          async () => {},
   reorderPairs:        async () => {},
+  reviewPair:          async () => {},  // v0.2.4追加
   exportCollectionCsv: async () => ({ ok: false }),
 }
 
