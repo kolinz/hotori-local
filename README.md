@@ -3,27 +3,17 @@
 Hotori は Electron + React で作られたデスクトップ学習アシスタントです。
 ローカル LLM（Ollama）・OpenAI API・Gemini API・Dify API の 4 モードに対応し、チャットUIの背景画像のカスタマイズにより、AIを使った学習をサポートします。
 
+- AI モデルとの会話ログを構造化されたCSVデータセットとしてダウンロードする機能
+  - 授業中の学生は、AIチャットで調べても記録しないので、少し時間をおいたり、翌週の授業はじめに小テストやると10点満点中1点とか3点とか続出します。授業中にAIチャットで調べても時間浪費による消費型学習でしかありません。HotoriはAIとの対話をとおして予習・復習を行う仕組みになります
+- 会話（レスポンス）の評価機能。Good or Bad
 - オフライン動作対応：Ollama モードではインターネット不要
   - 個人情報や機密情報が関わることに生成AIを使いたい場合向け
-- プライバシー重視：会話はすべてローカルに保存
-- RAG-to-SFTの学習データ作成：Dify RAG の応答を学習データセットに変換してローカルモデルに蒸留することに役立つ
 - 学習コレクション機能：チャット中の良いQ&Aペアを科目・テーマ別に仕分け・蓄積し、コレクション単位でCSVエクスポート
 - 要確認フラグ：AIの回答を原則要確認とし、内容確認による復習とデータとしての品質改善を行う
+- RAG-to-SFTの学習データ作成：Dify RAG の応答を学習データセットに変換してローカルモデルに蒸留することに役立つ
+- SDD（仕様駆動開発）で開発のため、[仕様書](https://github.com/kolinz/hotori-local/blob/main/docs/hotori-specification-SDD-v0.2.4.md)付き
 
 > 📌RAG-to-SFT（Knowledge Distillation from RAG）とは？ RAG システム（Dify）が生成した高品質な応答を、そのまま SFT（教師あり微調整）用の 学習データセットとして活用する手法です。RAG の知識をモデル自体に内在化することで、 推論時の検索コストなしに同等の出力を目指します。 学術的には「Distilling RAG」として 2024〜2025年に研究が出始めた新しい領域です。
-
----
-
-## 特長
-
-- SDD（仕様駆動開発）で開発のため、[仕様書](https://github.com/kolinz/hotori-local/blob/main/docs/hotori-specification-SDD-v0.2.4.md)付き
-- セルフホスト型およびPC内運用のローカル LLM / SLM（Ollama）・OpenAI API・Gemini API・Dify API に対応
-- 会話（レスポンス）の評価機能。Good or Bad
-- AI モデルとの会話を CSV ファイルとしてダウンロードする機能。ChatGPT や Gemini の有料プランにもない機能
-  - ダウンロードした CSV ファイルは
-    - NotebookLM・OneNote・Notion にアップロードして学習に活かす
-    - **マルチ教師蒸留（multi-teacher distillation）**：DeepSeek 開発などでも使われている手法。CSV データとして取得した AI との会話を、SFT（教師あり微調整）や継続事前学習のための学習データセットとして活用する
-    - **RAG-to-SFT**：Dify の RAG システムが生成した高品質応答を学習データ化し、ローカルモデルに知識を内在化する（実装例の少ない手法）
 
 > ⚠️ **注意**：ファインチューニング・継続事前学習では、人間が作成した生データを必ず混ぜること。生成 AI のみで作った学習データセットはモデル崩壊（model collapse）を引き起こす可能性がある。
 
