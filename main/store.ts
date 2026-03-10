@@ -59,11 +59,13 @@ export async function initStore(): Promise<void> {
         assistant_message_id TEXT NOT NULL,
         sort_order INTEGER NOT NULL DEFAULT 0,
         added_at TEXT NOT NULL,
+        needs_review INTEGER NOT NULL DEFAULT 1,
         FOREIGN KEY(collection_id) REFERENCES mixing_collections(id)
       );
       CREATE INDEX IF NOT EXISTS idx_mixing_pairs_col ON mixing_pairs(collection_id);
     `)
-
+    // v0.2.4: needs_reviewカラムのマイグレーション（既存DBへの追加）
+    try { db.run(`ALTER TABLE mixing_pairs ADD COLUMN needs_review INTEGER NOT NULL DEFAULT 1`) } catch {}
     persistDb()
     console.log('[store] sql.js initialized:', dbPath)
   } catch (err) {
@@ -231,6 +233,7 @@ export function listPairs(collectionId: string): MixingPair[] {
       mp.id, mp.collection_id, mp.session_id,
       mp.user_message_id, mp.assistant_message_id,
       mp.sort_order, mp.added_at,
+      mp.needs_review,
       s.title      AS session_title,
       s.started_at AS session_date,
       am.model     AS model,
@@ -256,6 +259,7 @@ export function listPairs(collectionId: string): MixingPair[] {
       assistant_message_id: r.assistant_message_id as string,
       sort_order:           r.sort_order as number,
       added_at:             r.added_at as string,
+      needs_review:         (r.needs_review as number) ?? 1,
       session_title:        (r.session_title as string) ?? '',
       session_date:         (r.session_date as string) ?? '',
       model:                (r.model as string) ?? '',
@@ -285,16 +289,23 @@ export function addPair(
   const added_at = new Date().toISOString()
   db.run(
     `INSERT INTO mixing_pairs
-      (id, collection_id, session_id, user_message_id, assistant_message_id, sort_order, added_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      (id, collection_id, session_id, user_message_id, assistant_message_id, sort_order, added_at, needs_review)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
     [id, collectionId, sessionId, userMessageId, assistantMessageId, nextOrder, added_at]
   )
   persistDb()
   return {
     id, collection_id: collectionId, session_id: sessionId,
     user_message_id: userMessageId, assistant_message_id: assistantMessageId,
-    sort_order: nextOrder, added_at,
+    sort_order: nextOrder, added_at, needs_review: 1,
   }
+}
+
+// v0.2.4追加: 要確認フラグ更新
+export function reviewPair(pairId: string, needsReview: boolean): void {
+  if (!db) return
+  db.run(`UPDATE mixing_pairs SET needs_review = ? WHERE id = ?`, [needsReview ? 1 : 0, pairId])
+  persistDb()
 }
 
 export function removePair(pairId: string): void {
@@ -316,11 +327,12 @@ export function reorderPairs(collectionId: string, orderedIds: string[]): void {
 
 export function exportCollectionCsv(collectionId: string, collectionName: string, outputPath: string): void {
   const pairs = listPairs(collectionId)
-  const header = 'collection_name,order,session_title,session_date,model,rating,user_content,assistant_content'
+  const header = 'collection_name,order,needs_review,session_title,session_date,model,rating,user_content,assistant_content'
   const safeColName = `"${collectionName.replace(/"/g, '""')}"`
   const rows = pairs.map((p, i) => [
     safeColName,
     i + 1,
+    p.needs_review ?? 1,
     `"${(p.session_title ?? '').replace(/"/g, '""')}"`,
     p.session_date ?? '',
     p.model ?? '',

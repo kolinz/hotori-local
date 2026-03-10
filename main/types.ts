@@ -33,6 +33,7 @@ export const IPC = {
   COLLECTION_REMOVE_PAIR: 'collection:removePair',
   COLLECTION_REORDER:     'collection:reorder',
   COLLECTION_EXPORT_CSV:  'collection:exportCsv',
+  COLLECTION_REVIEW_PAIR: 'collection:reviewPair',  // v0.2.4追加
 } as const
 
 export type IPCKey = keyof typeof IPC
@@ -80,6 +81,7 @@ export interface MixingPair {
   assistant_message_id: string
   sort_order: number
   added_at: string
+  needs_review: number  // v0.2.4追加: 1=要確認（デフォルト）/ 0=確認済み
   // JOINで取得する表示フィールド
   session_title?: string
   session_date?: string
@@ -98,6 +100,7 @@ export interface AppSettings {
   avatarPath: string; backgroundImagePath: string
   theme: 'light' | 'dark' | 'auto'
   distance: Distance; reducedMotion: boolean
+  distanceEnabled: boolean  // v0.2.4追加: 距離感機能の有効化（デフォルトオフ）
   defaultModel: string; streamTimeout: number
   toneTagEnabled: boolean; enabledMotions: MotionName[]
   understandingWordsEnabled: boolean; understandingWords: string[]
@@ -134,6 +137,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   backgroundImagePath: '',
   theme: 'auto',
   distance: 'tutor',
+  distanceEnabled: false,  // v0.2.4追加
   reducedMotion: false,
   streamTimeout: 60,
   toneTagEnabled: false,

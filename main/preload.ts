@@ -59,6 +59,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke(IPC.COLLECTION_ADD_PAIR, collectionId, sessionId, userMsgId, assistantMsgId),
   removePair:   (pairId: string): Promise<void>                           => ipcRenderer.invoke(IPC.COLLECTION_REMOVE_PAIR, pairId),
   reorderPairs: (collectionId: string, orderedIds: string[]): Promise<void> => ipcRenderer.invoke(IPC.COLLECTION_REORDER, collectionId, orderedIds),
+  reviewPair:   (pairId: string, needsReview: boolean): Promise<void>     => ipcRenderer.invoke(IPC.COLLECTION_REVIEW_PAIR, pairId, needsReview),  // v0.2.4追加
   exportCollectionCsv: (collectionId: string, collectionName: string): Promise<{ ok: boolean; filePath?: string; canceled?: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC.COLLECTION_EXPORT_CSV, collectionId, collectionName),
 })
