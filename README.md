@@ -9,6 +9,8 @@ AIチャットは便利ですが、記録されない対話は学んだつもり
 
 Hotoriは AIとの対話を記録・整理し、予習・復習に活かす仕組みを提供します。表形式のファイルとして出力できるため、Notion・OneNote・NotebookLM などのデジタルノートツールに蓄積して活用することもできます。
 
+<img src="https://github.com/kolinz/hotori-local/blob/main/docs/images/top_image-02.png" width="100%" />
+
 ## 概要
 Hotori は Electron + React で作られたデスクトップ学習アシスタントです。
 ローカル LLM（Ollama）・OpenAI API・Gemini API・Dify API の 4 モードに対応し、チャットUIの背景画像のカスタマイズにより、AIを使った学習をサポートします。
